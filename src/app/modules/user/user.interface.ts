@@ -8,20 +8,22 @@ export interface IUser {
   email: string;
   bio: string;
   phoneNumber: string;
-  password: string; 
+  password: string;
+  notification: boolean;
+  alert: string;
 
   // profile Details
-  gender: 'Male' | 'Female' | 'Others';   
+  gender: 'Male' | 'Female' | 'Others';
   dateOfBirth: string;
   customerId: string;
   loginWth: 'google' | 'apple' | 'facebook' | 'credentials';
-  role: string; 
+  role: string;
   address?: string;
   needsPasswordChange: boolean;
   passwordChangedAt?: Date;
   isDeleted: boolean;
   expireAt: Date;
-  fmcToken:string,
+  fmcToken: string;
   verification: {
     otp: string | number;
     expiresAt: Date;

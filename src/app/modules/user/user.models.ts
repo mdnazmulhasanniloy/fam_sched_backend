@@ -61,7 +61,6 @@ const userSchema: Schema<IUser> = new Schema(
       default: null,
     },
 
-
     address: {
       type: String,
       default: null,
@@ -77,6 +76,15 @@ const userSchema: Schema<IUser> = new Schema(
       type: String,
       enum: Login_With,
       default: Login_With.credentials,
+    },
+    notification: {
+      type: Boolean,
+      default: true,
+    },
+    alert: {
+      type: String,
+      enum: ['all', 'only_event_assigned'],
+      default: 'all',
     },
 
     status: {
@@ -155,7 +163,7 @@ userSchema.pre('save', async function (next) {
   }
 
   next();
-}); 
+});
 
 userSchema.post(
   'save',

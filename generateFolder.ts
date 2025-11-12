@@ -7,13 +7,13 @@ const fs = require('fs');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path');
 
-function capitalizeFirstLetter(text) {
+function capitalizeFirstLetter(text: string) {
   const [first = '', ...rest] = text;
   return [first.toUpperCase(), ...rest].join('');
 }
 
 // Function to create the folder and files
-function createFolderAndFiles(parentFolderPath, folderName) {
+function createFolderAndFiles(parentFolderPath: string, folderName: string) {
   const folderPath = path.join(parentFolderPath, folderName);
   fs.mkdirSync(folderPath);
 
@@ -37,21 +37,68 @@ function createFolderAndFiles(parentFolderPath, folderName) {
 import httpStatus from 'http-status';
 import { I${capitalizeFirstLetter(folderName)} } from './${folderName}.interface';
 import ${capitalizeFirstLetter(folderName)} from './${folderName}.models';
-import QueryBuilder from '../../builder/QueryBuilder';
+import QueryBuilder from '../../core/builder/QueryBuilder';
 import AppError from '../../error/AppError';
+import { pubClient } from '../../redis';
 
 const create${capitalizeFirstLetter(folderName)} = async (payload: I${capitalizeFirstLetter(folderName)}) => {
   const result = await ${capitalizeFirstLetter(folderName)}.create(payload);
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Failed to create ${folderName}');
   }
+
+  // 🔹 Redis cache invalidation
+  try {
+    // Clear all ${folderName} list caches
+    const keys = await pubClient.keys('${folderName}:*');
+    if (keys.length > 0) {
+      await pubClient.del(keys);
+    }
+
+    // Optionally, clear single ${folderName} cache if updating an existing unverified ${folderName}
+    if (result?._id) {
+      await pubClient.del('${folderName}:'+ result?._id?.toString());
+    }
+  } catch (err) {
+    console.error('Redis cache invalidation error (create${capitalizeFirstLetter(folderName)}):', err);
+  }
+
+
+
   return result;
 };
 
 const getAll${capitalizeFirstLetter(folderName)} = async (query: Record<string, any>) => {
-query["isDeleted"] = false;
-  const ${folderName}Model = new QueryBuilder(${capitalizeFirstLetter(folderName)}.find(), query)
-    .search([])
+ 
+  try {
+  const cacheKey = '${folderName}:' + JSON.stringify(query);
+      // 1. Check cache
+    const cachedData = await pubClient.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+  const ${folderName}Model = new QueryBuilder(${capitalizeFirstLetter(folderName)}.find({isDeleted:false}), query)
+    .search([""])
+    .filter()
+    .paginate()
+    .sort()
+    .fields();
+
+  const data = await ${folderName}Model.modelQuery;
+  const meta = await ${folderName}Model.countTotal();
+
+const response = { data, meta };
+
+  // 3. Store in cache (30s TTL)
+    await pubClient.set(cacheKey, JSON.stringify(response), { EX: 30 });
+
+    return response;
+
+  
+  } catch (err) {
+    console.error('Redis caching error (getAll${capitalizeFirstLetter(folderName)}):', err);
+    const ${folderName}Model = new QueryBuilder(${capitalizeFirstLetter(folderName)}.find({isDeleted:false}), query)
+    .search([""])
     .filter()
     .paginate()
     .sort()
@@ -65,13 +112,37 @@ query["isDeleted"] = false;
     meta,
   };
 };
+    }
 
 const get${capitalizeFirstLetter(folderName)}ById = async (id: string) => {
+try{
+ const cacheKey = '${folderName}:' +id;
+
+    // 1. Check cache
+    const cachedData = await pubClient.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
+// 2. Fetch from DB
+   const result = await ${capitalizeFirstLetter(folderName)}.findById(id);
+  if (!result || result?.isDeleted) {
+    throw new Error('${capitalizeFirstLetter(folderName)} not found!');
+  }
+
+// 3. Store in cache (e.g., 30s TTL)
+    await pubClient.set(cacheKey, JSON.stringify(result), { EX: 30 });
+
+    return result;
+}catch (err) {
+ console.error('Redis caching error (ge${capitalizeFirstLetter(folderName)}ById):', err);
   const result = await ${capitalizeFirstLetter(folderName)}.findById(id);
-  if (!result && result?.isDeleted) {
+  if (!result || result?.isDeleted) {
     throw new Error('${capitalizeFirstLetter(folderName)} not found!');
   }
   return result;
+  
+  }
 };
 
 const update${capitalizeFirstLetter(folderName)} = async (id: string, payload: Partial<I${capitalizeFirstLetter(folderName)}>) => {
@@ -79,6 +150,21 @@ const update${capitalizeFirstLetter(folderName)} = async (id: string, payload: P
   if (!result) {
     throw new Error('Failed to update ${capitalizeFirstLetter(folderName)}');
   }
+
+   // 🔹 Redis cache invalidation
+  try {
+    // single ${folderName} cache delete
+    await pubClient.del('${folderName}:'+id);
+
+    // ${folderName} list cache clear
+    const keys = await pubClient.keys('${folderName}:*');
+    if (keys.length > 0) {
+      await pubClient.del(keys);
+    }
+  } catch (err) {
+    console.error('Redis cache invalidation error (update${capitalizeFirstLetter(folderName)}):', err);
+  }
+
   return result;
 };
 
@@ -91,6 +177,24 @@ const delete${capitalizeFirstLetter(folderName)} = async (id: string) => {
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Failed to delete ${folderName}');
   }
+
+ // 🔹 Redis cache invalidation
+  try {
+    // single ${folderName} cache delete
+    await pubClient.del('${folderName}'+id?.toString());
+
+    // ${folderName} list cache clear
+    const keys = await pubClient.keys('${folderName}:*');
+    if (keys.length > 0) {
+      await pubClient.del(keys);
+    }
+  } catch (err) {
+    console.error('Redis cache invalidation error (delete${capitalizeFirstLetter(folderName)}):', err);
+  }
+
+
+
+
   return result;
 };
 
@@ -201,29 +305,13 @@ import { I${capitalizeFirstLetter(folderName)}, I${capitalizeFirstLetter(folderN
 
 const ${folderName}Schema = new Schema<I${capitalizeFirstLetter(folderName)}>(
   {
-    isDeleted: { type: 'boolean', default: false },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,
   }
 );
-
-//${folderName}Schema.pre('find', function (next) {
-//  //@ts-ignore
-//  this.find({ isDeleted: { $ne: true } });
-//  next();
-//});
-
-//${folderName}Schema.pre('findOne', function (next) {
-  //@ts-ignore
-  //this.find({ isDeleted: { $ne: true } });
- // next();
-//});
-
-${folderName}Schema.pre('aggregate', function (next) {
-  this.pipeline().unshift({ $match: { isDeleted: { $ne: true } } });
-  next();
-});
+ 
 
 const ${capitalizeFirstLetter(folderName)} = model<I${capitalizeFirstLetter(folderName)}, I${capitalizeFirstLetter(folderName)}Modules>(
   '${capitalizeFirstLetter(folderName)}',
@@ -245,9 +333,9 @@ const readline = require('readline').createInterface({
   output: process.stdout,
 });
 
-readline.question('Enter parent folder path: ', parentFolderPath => {
-  readline.question('Enter folder name: ', folderName => {
-    createFolderAndFiles(parentFolderPath, folderName);
-    readline.close();
-  });
+// readline.question('Enter parent folder path: ', parentFolderPath => {
+readline.question('Enter folder name: ', (folderName: string) => {
+  createFolderAndFiles('./src/app/modules', folderName);
+  readline.close();
 });
+// });
