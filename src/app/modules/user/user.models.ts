@@ -103,7 +103,7 @@ const userSchema: Schema<IUser> = new Schema(
     needsPasswordChange: {
       type: Boolean,
     },
-    fmcToken: {
+    fcmToken: {
       type: String,
       default: null,
     },

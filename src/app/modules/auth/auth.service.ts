@@ -68,6 +68,7 @@ const login = async (payload: TLogin, req: Request) => {
   const parser = new UAParser(userAgent);
   const result = parser.getResult();
   const data = {
+    fcmToken: payload.fcmToken,
     device: {
       ip: ip,
       browser: result.browser.name,
@@ -339,7 +340,7 @@ const googleLogin = async (payload: any, req: Request) => {
 
         await User.findByIdAndUpdate(
           isExist?._id,
-          { device },
+          { device, fcmToken: payload?.fcmToken },
           { new: true, upsert: false },
         );
       }
@@ -392,6 +393,7 @@ const googleLogin = async (payload: any, req: Request) => {
       const parser = new UAParser(userAgent);
       const result = parser.getResult();
       const data = {
+        fcmToken: payload?.fcmToken,
         device: {
           ip: ip,
           browser: result.browser.name,

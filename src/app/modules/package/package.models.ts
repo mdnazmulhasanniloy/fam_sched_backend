@@ -11,7 +11,7 @@ const packageSchema = new Schema<IPackage>(
       type: String,
       required: true,
     },
-    members: {
+    maxMembers: {
       type: Number,
       required: true,
     },

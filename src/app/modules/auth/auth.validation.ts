@@ -3,6 +3,9 @@ import { Role, USER_ROLE } from '../user/user.constants';
 
 const loginZodValidationSchema = z.object({
   body: z.object({
+    fcmToken: z.string({
+      required_error: 'Fcm token is required!',
+    }),
     email: z.string({
       required_error: 'Email is required!',
     }),
@@ -22,6 +25,9 @@ const refreshTokenValidationSchema = z.object({
 
 const googleLogin = z.object({
   body: z.object({
+    fcmToken: z.string({
+      required_error: 'Fcm token is required!',
+    }),
     token: z.string({
       required_error: 'Token is Required',
     }),

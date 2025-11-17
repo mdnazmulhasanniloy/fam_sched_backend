@@ -24,8 +24,7 @@ app.use(
   }),
 );
 
-// Remove duplicate static middleware
-// app.use(app.static('public'));
+
 
 // application routes
 app.use('/api/v1', router);

@@ -23,7 +23,7 @@ export interface IUser {
   passwordChangedAt?: Date;
   isDeleted: boolean;
   expireAt: Date;
-  fmcToken: string;
+  fcmToken: string;
   verification: {
     otp: string | number;
     expiresAt: Date;
