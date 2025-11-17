@@ -8,7 +8,7 @@ export interface ISubscriptions {
   package: ObjectId | IPackage;
   isPaid: boolean;
   trnId: string;
-  expireAt: Date;
+  expiredAt: Date;
   amount: number;
   limit: number;
   isExpired: boolean;

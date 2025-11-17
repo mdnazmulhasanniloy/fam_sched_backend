@@ -1,10 +1,16 @@
 import { Stripe as StripeType } from 'stripe';
 import config from '../../config';
-interface IProducts {
-  amount: number;
-  name: string;
+interface IPaymentItems {
+  price_data: {
+    currency: string;
+    product_data: {
+      name: string;
+    };
+    unit_amount: number;
+  };
   quantity: number;
 }
+
 class StripeServices<T> {
   private stripe() {
     return new StripeType(config.stripe?.stripe_api_secret as string, {
@@ -135,7 +141,7 @@ class StripeServices<T> {
   }
 
   public async getCheckoutSession(
-    product: IProducts,
+    product: IPaymentItems[],
     success_url: string,
     cancel_url: string,
     customer: string = '', // Optional: customer ID for Stripe
@@ -143,24 +149,13 @@ class StripeServices<T> {
     payment_method_types: Array<'card' | 'paypal' | 'ideal'> = ['card'],
   ) {
     try {
-      if (!product?.name || !product?.amount || !product?.quantity) {
-        throw new Error('Product details are incomplete.');
-      }
+      // if (!product?.name || !product?.amount || !product?.quantity) {
+      //   throw new Error('Product details are incomplete.');
+      // }
       const stripe = this.stripe();
 
       return await stripe.checkout.sessions.create({
-        line_items: [
-          {
-            price_data: {
-              currency,
-              product_data: {
-                name: product?.name,
-              },
-              unit_amount: product?.amount * 100,
-            },
-            quantity: product?.quantity,
-          },
-        ],
+        line_items: product,
 
         success_url: success_url,
         cancel_url: cancel_url,
