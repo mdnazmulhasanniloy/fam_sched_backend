@@ -12,6 +12,8 @@ const app: Application = express();
 app.use(express.static('public'));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
+app.set('view engine', 'ejs');
+app.set('views', 'public/ejs');
 
 //parsers
 app.use(express.json());
@@ -23,8 +25,6 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   }),
 );
-
-
 
 // application routes
 app.use('/api/v1', router);

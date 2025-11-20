@@ -23,6 +23,7 @@ const createSubscription = async (payload: ISubscriptions) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Package not found');
   }
 
+  payload.amount = Number(packages.price);
   const result = await Subscription.create(payload);
   if (!result) {
     throw new Error('Failed to create subscription');

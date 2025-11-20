@@ -16,6 +16,23 @@ const verifyOtp = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const verifyLink = catchAsync(async (req: Request, res: Response) => {
+  const result = await otpServices.verifyLink(req?.query);
+
+  return res.render('successMessage', {
+    hadeTitle: 'OTP Verification',
+    title: 'Account Verified!',
+    description:
+      ' Congratulations! Your account has been successfully verified. You can  now log in and start using our services.',
+  });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'OTP verified successfully',
+    data: result,
+  });
+});
+
 const resendOtp = catchAsync(async (req: Request, res: Response) => {
   const result = await otpServices.resendOtp(req.body.email);
   sendResponse(res, {
@@ -29,4 +46,5 @@ const resendOtp = catchAsync(async (req: Request, res: Response) => {
 export const otpControllers = {
   verifyOtp,
   resendOtp,
+  verifyLink,
 };

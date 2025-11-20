@@ -8,7 +8,12 @@ import { User } from '../modules/user/user.models';
 
 const auth = (...userRoles: string[]) => {
   return catchAsync(async (req, res, next) => {
-    const token = req?.headers?.authorization?.split('')[1];
+    // const [bearer, tokenValue] = req?.headers?.authorization?.split(' ');
+    // console.log({
+    //   bearer,
+    //   tokenValue,
+    // });
+    const token = req?.headers?.authorization?.split(' ')[1];
 
     if (!token) {
       throw new AppError(httpStatus.UNAUTHORIZED, 'you are not authorized!');
@@ -23,7 +28,8 @@ const auth = (...userRoles: string[]) => {
       throw new AppError(httpStatus.UNAUTHORIZED, 'unauthorized');
     }
     const { role, userId } = decode;
-    const isUserExist = User.IsUserExistId(userId);
+    const isUserExist = await User.IsUserExistId(userId);
+
     if (!isUserExist) {
       throw new AppError(httpStatus.NOT_FOUND, 'user not found');
     }

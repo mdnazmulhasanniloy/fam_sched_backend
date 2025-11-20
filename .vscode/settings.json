@@ -8,5 +8,5 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "typescript.updateImportsOnFileMove.enabled": "always",
-  "cSpell.words": ["refference", "updatetion"]
+  "cSpell.words": ["Alrady", "refference", "updatetion"]
 }

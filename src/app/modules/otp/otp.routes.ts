@@ -15,4 +15,10 @@ router.post(
   otpControllers.resendOtp,
 );
 
+router.get(
+  '/verify-link',
+  validateRequest(resentOtpValidations.verifyLinkSchema),
+  otpControllers.verifyLink,
+);
+
 export const otpRoutes = router;

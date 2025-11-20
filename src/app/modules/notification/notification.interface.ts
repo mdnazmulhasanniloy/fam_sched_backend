@@ -1,8 +1,7 @@
 import { ObjectId } from 'mongodb';
 export enum modeType {
-  RefundRequest = 'refundRequest',
-  ShopWiseOrder = 'ShopWiseOrder',
-  Order = 'Order',
+  Member = 'Member',
+  Payments = 'Payments',
 }
 export interface TNotification {
   receiver: ObjectId;

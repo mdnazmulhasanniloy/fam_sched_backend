@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to Sky Sync – Your Account is Ready!</title>
+    <style>
+      :root {
+        --primary: #765d56;
+        --primary-light: #8c7068;
+        --accent: #f0e6e2;
+        --text: #333333;
+        --light: #666666;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #faf6f3;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        line-height: 1.6;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      .card {
+        background: #ffffff;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(118, 93, 86, 0.18);
+        border: 1px solid #e5d7d1;
+      }
+
+      /* Hero Header */
+      .hero {
+        background: linear-gradient(135deg, #765d56 0%, #8c7068 100%);
+        padding: 60px 30px 50px;
+        text-align: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="20" cy="20" r="8" fill="rgba(255,255,255,0.08)"/><circle cx="80" cy="30" r="12" fill="rgba(255,255,255,0.06)"/><circle cx="40" cy="70" r="10" fill="rgba(255,255,255,0.07)"/></svg>');
+        background-size: 120px;
+        opacity: 0.3;
+      }
+      .hero h1 {
+        font-size: 34px;
+        font-weight: 800;
+        margin: 0 0 12px;
+        position: relative;
+        color: #fff;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+      .hero p {
+        font-size: 18px;
+        margin: 0;
+        opacity: 0.95;
+        color: #fff;
+        position: relative;
+      }
+
+      /* Content */
+      .content {
+        padding: 50px 45px 40px;
+        text-align: center;
+        color: var(--text);
+      }
+      .greeting {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+      .highlight {
+        background: linear-gradient(120deg, #fdf9f6, #f0e6e2);
+        border: 2px solid #e8d9d4;
+        border-radius: 20px;
+        padding: 32px 28px;
+        margin: 40px 0;
+        box-shadow: 0 8px 25px rgba(118, 93, 86, 0.12);
+      }
+      .highlight .title {
+        font-size: 18px;
+        color: #765d56;
+        font-weight: 700;
+        margin-bottom: 20px;
+      }
+      .cred-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin: 14px 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        font-size: 15px;
+      }
+      .cred-row .label {
+        color: #555;
+        font-weight: 600;
+      }
+      .cred-row .value {
+        color: #765d56;
+        font-weight: 800;
+        font-family: 'Courier New', monospace;
+        background: #fdf9f6;
+        padding: 6px 12px;
+        border-radius: 8px;
+      }
+
+      .btn-primary {
+        display: inline-block;
+        background: #765d56;
+        color: white !important;
+        font-size: 19px;
+        font-weight: 700;
+        padding: 20px 56px;
+        border-radius: 16px;
+        text-decoration: none;
+        margin: 35px 0 20px;
+        box-shadow: 0 12px 30px rgba(118, 93, 86, 0.4);
+        transition: all 0.4s;
+      }
+      .btn-primary:hover {
+        background: #8c7068;
+        transform: translateY(-5px);
+        box-shadow: 0 16px 35px rgba(118, 93, 86, 0.5);
+      }
+
+      .app-section {
+        margin: 50px 0;
+      }
+      .app-section h3 {
+        font-size: 20px;
+        color: #444;
+        margin-bottom: 24px;
+      }
+      .app-buttons {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .app-buttons img {
+        height: 58px;
+        border-radius: 14px;
+        transition: transform 0.4s;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+      }
+      /*.app-buttons img:hover { transform:scale(1.12); }*/
+
+      .security-box {
+        background: #fdf9f6;
+        border-left: 6px solid #765d56;
+        padding: 24px;
+        border-radius: 0 16px 16px 0;
+        margin: 40px 0;
+        text-align: left;
+        font-size: 15px;
+        color: #555;
+      }
+      .security-box strong {
+        color: #765d56;
+      }
+
+      .footer {
+        background: #f7f2ef;
+        color: #888;
+        font-size: 13px;
+        text-align: center;
+        padding: 35px 30px;
+      }
+      .footer a {
+        color: #765d56;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 40px 20px; background: #faf6f3">
+          <table class="container">
+            <tr>
+              <td class="card">
+                <!-- Hero Header -->
+                <div class="hero">
+                  <h1>Welcome to Sky Sync!</h1>
+                  <p>You’re officially part of the team</p>
+                </div>
+
+                <!-- Main Content -->
+                <div class="content">
+                  <p class="greeting">Hey <strong>{{memberName}}</strong>,</p>
+
+                  <p style="font-size: 17px; margin: 20px 0 30px">
+                    <strong>{{addedByName}}</strong> has just added you to their
+                    Sky Sync team — your personal account is ready to roll!
+                  </p>
+
+                  <div class="highlight">
+                    <div class="title">Your Login Credentials</div>
+
+                    <div class="cred-row">
+                      <span class="label">Email Address</span>
+                      <span class="value">{{memberEmail}}</span>
+                    </div>
+
+                    <div class="cred-row">
+                      <span class="label">Temporary Password</span>
+                      <span class="value">{{temporaryPassword}}</span>
+                    </div>
+                  </div>
+
+                  <div class="app-section">
+                    <div class="app-buttons">
+                      <a href="{{appStoreLink}}" target="_blank">
+                        <img
+                          src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                          alt="App Store"
+                        />
+                      </a>
+                      <a href="{{playStoreLink}}" target="_blank">
+                        <img
+                          src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
+                          alt="Google Play"
+                          style="height: 80px"
+                        />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="security-box">
+                    <strong>Security First:</strong><br />
+                    Please <strong>change your temporary password</strong> right
+                    after your first login. This keeps your account 100% secure
+                    and only you will have access.
+                  </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                  © 2025 Sky Sync • All rights reserved<br />
+                  Questions? Reply to this email or write to
+                  <a href="mailto:support@skysync.com">support@skysync.com</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

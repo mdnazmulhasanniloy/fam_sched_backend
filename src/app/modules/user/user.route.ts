@@ -21,12 +21,13 @@ router.post(
 router.post('/invite-worker', userController.createWorker);
 
 router.patch(
-  '/update-my-profile',
+  '/update-my-profile', 
   auth(
     USER_ROLE.admin,
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
     USER_ROLE.user,
+    USER_ROLE.worker,
   ),
   upload.single('profile'),
   parseData(),
@@ -48,6 +49,7 @@ router.delete(
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
     USER_ROLE.user,
+    USER_ROLE.worker,
   ),
   userController.deleteMYAccount,
 );
@@ -64,6 +66,7 @@ router.get(
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
     USER_ROLE.user,
+    USER_ROLE.worker,
   ),
   userController.getMyProfile,
 );

@@ -49,15 +49,8 @@ const userSchema: Schema<IUser> = new Schema(
     phoneNumber: {
       type: String,
       required: false,
-      unique: true,
       sparse: true,
       trim: true,
-      validate: {
-        validator: function (v: string) {
-          return /^(\+?\d{8,15})$/.test(v);
-        },
-        message: (props: any) => `${props.value} is not a valid phone number!`,
-      },
       default: null,
     },
 
@@ -176,6 +169,11 @@ userSchema.post(
 
 userSchema.statics.isUserExist = async function (email: string) {
   return await User.findOne({ email: email }).select('+password');
+};
+userSchema.statics.getAdmin = async function () {
+  return await User.findOne({ role: USER_ROLE.admin }).select(
+    '_id name email role phoneNumber profile',
+  );
 };
 
 userSchema.statics.IsUserExistId = async function (id: string) {

@@ -9,6 +9,8 @@ const validateRequest = (schema: AnyZodObject) => {
       files: req.files,
       file: req.file,
       cookies: req.cookies,
+      query: req.query,
+      params: req.params,
     });
 
     next();

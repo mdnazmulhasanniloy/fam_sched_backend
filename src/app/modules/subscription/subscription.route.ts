@@ -7,7 +7,7 @@ const router = Router();
 
 router.post(
   '/',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   subscriptionController.createSubscription,
 );
 
@@ -28,11 +28,13 @@ router.get(
   auth(USER_ROLE.admin, USER_ROLE.sub_admin, USER_ROLE.super_admin),
   subscriptionController.getSubscriptionByUserId,
 );
+
 router.get(
   '/my-subscriptions',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   subscriptionController.getMySubscription,
 );
+
 router.get(
   '/:id',
   auth(
@@ -40,6 +42,7 @@ router.get(
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
     USER_ROLE.user,
+    USER_ROLE.worker,
   ),
   subscriptionController.getSubscriptionById,
 );

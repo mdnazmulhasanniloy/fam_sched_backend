@@ -103,7 +103,7 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
 
 const resetPasswordLink = catchAsync(async (req: Request, res: Response) => {
   const token = req.query.token;
-  const result = await authServices.resetPasswordLink(token as string);
+  // const result = await authServices.resetPasswordLink(token as string);
 
   res.render('resetPasswordPage', {
     // resetUrl: `${config.server_url}/auth/reset-password`,

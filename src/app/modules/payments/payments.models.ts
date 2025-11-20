@@ -7,7 +7,7 @@ const paymentsSchema = new Schema<IPayments>(
   {
     id: {
       type: String,
-      default: () => `#${generateCryptoString(10)}`,
+      default: () => `${generateCryptoString(10)}`,
     },
     user: {
       type: Types.ObjectId,

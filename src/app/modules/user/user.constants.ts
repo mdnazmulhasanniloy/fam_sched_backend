@@ -15,5 +15,3 @@ export enum Login_With {
 
 export const gender = ['Male', 'Female', 'Others'];
 export const Role = ['admin', 'super_admin', 'sub_admin', 'user', 'worker'];
-
- 
