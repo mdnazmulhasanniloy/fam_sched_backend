@@ -1,17 +1,14 @@
 import { Router } from 'express';
 import { messagesController } from './messages.controller';
 import validateRequest from '../../middleware/validateRequest';
-import { messagesValidation } from './messages.validation';
-import multer, { memoryStorage } from 'multer';
+import { messagesValidation } from './messages.validation'; 
 import parseData from '../../middleware/parseData';
 import auth from '../../middleware/auth';
-import { USER_ROLE } from '../user/user.constants'; 
+import { USER_ROLE } from '../user/user.constants';
 import fileUpload from '../../middleware/fileUpload';
 const upload = fileUpload('./public/uploads/messages');
 
-const router = Router();
-// const storage = memoryStorage();
-// const upload = multer({ storage });
+const router = Router(); 
 
 router.post(
   '/send-messages',

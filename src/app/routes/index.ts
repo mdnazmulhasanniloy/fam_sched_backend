@@ -8,6 +8,8 @@ import { packageRoutes } from '../modules/package/package.route';
 import { subscriptionRoutes } from '../modules/subscription/subscription.route';
 import { paymentsRoutes } from '../modules/payments/payments.route';
 import { memberRoutes } from '../modules/member/member.route';
+import { eventsRoutes } from '../modules/events/events.route';
+import { dashboardRoutes } from '../modules/dashboard/dashboard.route';
 
 const router = Router();
 const moduleRoutes = [
@@ -46,6 +48,14 @@ const moduleRoutes = [
   {
     path: '/members',
     route: memberRoutes,
+  },
+  {
+    path: '/events',
+    route: eventsRoutes,
+  },
+  {
+    path: '/dashboard',
+    route: dashboardRoutes,
   },
 ];
 moduleRoutes.forEach(route => router.use(route.path, route.route));
