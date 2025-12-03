@@ -21,7 +21,19 @@ const dashboardChart = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const getAllTransitions = catchAsync(async (req: Request, res: Response) => {
+  const result = await dashboardService.getAllTransitions(req.query);
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: 'Dashboard transition data get successfully',
+    data: result,
+  });
+});
+
+
 export const dashboardController = {
   getTopCards,
   dashboardChart,
+  getAllTransitions,
 };

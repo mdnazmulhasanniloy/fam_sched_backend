@@ -10,6 +10,7 @@ import { paymentsRoutes } from '../modules/payments/payments.route';
 import { memberRoutes } from '../modules/member/member.route';
 import { eventsRoutes } from '../modules/events/events.route';
 import { dashboardRoutes } from '../modules/dashboard/dashboard.route';
+import { homepageDataRoutes } from '../modules/homepageData/homepageData.route';
 
 const router = Router();
 const moduleRoutes = [
@@ -56,6 +57,10 @@ const moduleRoutes = [
   {
     path: '/dashboard',
     route: dashboardRoutes,
+  },
+  {
+    path: '/home',
+    route: homepageDataRoutes,
   },
 ];
 moduleRoutes.forEach(route => router.use(route.path, route.route));

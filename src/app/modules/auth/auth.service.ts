@@ -149,9 +149,11 @@ const forgotPassword = async (email: string) => {
   const currentTime = new Date();
   const otp = generateOtp();
   const expiresAt = moment(currentTime).add(3, 'minute');
+  const passwordChangedAt = moment(currentTime).add(5, 'minute');
 
   await User.findByIdAndUpdate(user?._id, {
     needsPasswordChange: true,
+    passwordChangedAt,
     verification: {
       otp,
       expiresAt,
@@ -193,15 +195,14 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
       'Session has expired. Please try again',
     );
   }
-
   const user: IUser | null = await User.findById(decode?.userId).select(
     'isDeleted verification',
   );
-  console.log('🚀 ~ resetPassword ~ user:', user);
 
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
+  console.log(user);
   if (new Date() > user?.verification?.expiresAt) {
     throw new AppError(httpStatus.FORBIDDEN, 'Session has expired');
   }

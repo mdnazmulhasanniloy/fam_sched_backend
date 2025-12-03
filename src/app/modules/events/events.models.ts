@@ -26,6 +26,7 @@ const eventsSchema = new Schema<IEvents>(
         ref: 'User',
       },
     ],
+    
     remainder: {
       value: {
         type: Number,
@@ -36,6 +37,7 @@ const eventsSchema = new Schema<IEvents>(
         enum: ['m', 'h', 'd', 'w'],
       },
     },
+
     recurring: {
       type: String,
       enum: ['daily', 'weekly', 'monthly', 'off'],

@@ -5,6 +5,9 @@ import { User } from '../user/user.models';
 import { initializeMonthlyData } from './dashboard.utils';
 import { MonthlyIncome, MonthlyUsers } from './dashboard.interface';
 import { PAYMENT_STATUS } from '../payments/payments.constants';
+import pickQuery from '../../utils/pickQuery';
+import { Types } from 'mongoose';
+import { paginationHelper } from '../../helpers/pagination.helpers';
 
 const getTopCards = async (query: Record<string, any>) => {
   const totalEarnings = await Payments.aggregate([
@@ -117,7 +120,187 @@ const dashboardChart = async (query: Record<string, any>) => {
   };
 };
 
+const getAllTransitions = async (query: Record<string, any>) => {
+  const today = moment().startOf('day');
+
+  const { filters, pagination } = await pickQuery(query);
+  const { searchTerm, ...filtersData } = filters;
+
+  if (filtersData.user) {
+    filtersData['user'] = new Types.ObjectId(filtersData.user);
+  }
+
+  const pipeline: any[] = [];
+  if (searchTerm) {
+    pipeline.push({
+      $match: {
+        $or: ['tnxId', 'cardLast4', 'status'].map(field => ({
+          [field]: {
+            $regex: searchTerm,
+            $options: 'i',
+          },
+        })),
+      },
+    });
+  }
+
+  if (Object.entries(filtersData).length) {
+    Object.entries(filtersData).forEach(([field, value]) => {
+      if (/^\[.*?\]$/.test(value)) {
+        const match = value.match(/\[(.*?)\]/);
+        const queryValue = match ? match[1] : value;
+        pipeline.push({
+          $match: {
+            [field]: { $in: [new Types.ObjectId(queryValue)] },
+          },
+        });
+        delete filtersData[field];
+      } else {
+        if (!isNaN(value)) {
+          filtersData[field] = Number(value);
+        }
+      }
+    });
+
+    if (Object.entries(filtersData).length) {
+      pipeline.push({
+        $match: {
+          $and: Object.entries(filtersData).map(([field, value]) => ({
+            isDeleted: false,
+            [field]: value,
+          })),
+        },
+      });
+    }
+  }
+  const { page, limit, skip, sort } =
+    paginationHelper.calculatePagination(pagination);
+
+  if (sort) {
+    const sortArray = sort.split(',').map(field => {
+      const trimmedField = field.trim();
+      if (trimmedField.startsWith('-')) {
+        return { [trimmedField.slice(1)]: -1 };
+      }
+      return { [trimmedField]: 1 };
+    });
+
+    pipeline.push({ $sort: Object.assign({}, ...sortArray) });
+  }
+
+  pipeline.push({
+    $facet: {
+      totalData: [{ $count: 'total' }],
+      paginatedData: [
+        { $skip: skip },
+        { $limit: limit },
+        // Lookups
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'user',
+            pipeline: [
+              {
+                $project: {
+                  name: 1,
+                  email: 1,
+                  phoneNumber: 1,
+                  profile: 1,
+                },
+              },
+            ],
+          },
+        },
+
+        {
+          $addFields: {
+            user: { $arrayElemAt: ['$user', 0] },
+          },
+        },
+      ],
+    },
+  });
+
+  const [result] = await Payments.aggregate(pipeline);
+  const total = result?.totalData?.[0]?.total || 0;
+  const data = result?.paginatedData || [];
+  const transactions = {
+    meta: { page, limit, total },
+    data,
+  };
+
+  const earnings = await Payments.aggregate([
+    {
+      $match: {
+        status: PAYMENT_STATUS.paid,
+      },
+    },
+    {
+      $facet: {
+        totalEarnings: [
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amount' },
+            },
+          },
+          {
+            $project: {
+              total: { $ifNull: ['$total', 0] },
+            },
+          },
+        ],
+        todayEarnings: [
+          {
+            $match: {
+              status: PAYMENT_STATUS.paid,
+              createdAt: {
+                $gte: today.startOf('day').toDate(),
+                $lte: today.endOf('day').toDate(),
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amount' },
+            },
+          },
+          {
+            $project: {
+              total: { $ifNull: ['$total', 0] }, // If no data, default to 0
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        totalEarnings: {
+          $ifNull: [{ $arrayElemAt: ['$totalEarnings.total', 0] }, 0],
+        }, // Ensure default 0 if empty
+        todayEarnings: {
+          $ifNull: [{ $arrayElemAt: ['$todayEarnings.total', 0] }, 0],
+        }, // Ensure default 0 if empty
+      },
+    },
+  ]).then(data => data[0]);
+  const totalSubscriptions = await Subscription.countDocuments({
+    isPaid: true,
+    isDeleted: false,
+  });
+
+  return {
+    transactions,
+    earnings,
+    totalSubscriptions,
+  };
+};
+
 export const dashboardService = {
   getTopCards,
   dashboardChart,
+  getAllTransitions,
 };
