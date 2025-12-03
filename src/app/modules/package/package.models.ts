@@ -23,6 +23,18 @@ const packageSchema = new Schema<IPackage>(
       type: Number,
       default: 0,
     },
+    updateHistory: [
+      {
+        field: String,
+        oldValue: Schema.Types.Mixed,
+        newValue: Schema.Types.Mixed,
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
     isDeleted: { type: Boolean, default: false },
   },
   {

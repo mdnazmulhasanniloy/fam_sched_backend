@@ -1,10 +1,4 @@
-import httpStatus from 'http-status';
-import { IHomepageData } from './homepageData.interface';
-import HomepageData from './homepageData.models';
-import QueryBuilder from '../../core/builder/QueryBuilder';
-import AppError from '../../error/AppError';
-import { pubClient } from '../../redis';
-import Events from '../events/events.models';
+ import Events from '../events/events.models';
 import { Types } from 'mongoose';
 import now from '../../utils/now';
 import moment from 'moment';

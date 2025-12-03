@@ -28,8 +28,6 @@ export async function defaultTask() {
       aboutUs: '',
       termsAndConditions: '',
       privacyPolicy: '',
-      supports: '',
-      faq: '',
     });
   }
 }

@@ -1,32 +1,22 @@
 import { Router } from 'express';
 import { contentsController } from './contents.controller';
 import auth from '../../middleware/auth';
-import { USER_ROLE } from '../user/user.constants';
-import parseData from '../../middleware/parseData';
-import multer, { memoryStorage } from 'multer';
+import { USER_ROLE } from '../user/user.constants'; 
 
-const router = Router();
-const storage = memoryStorage();
-const upload = multer({ storage });
+const router = Router(); 
 
 router.post(
   '/',
-  auth(USER_ROLE.super_admin, USER_ROLE.sub_admin, USER_ROLE.admin),
-  upload.fields([{ name: 'banner', maxCount: 5 }]),
-  parseData(),
-  // validateRequest(contentsValidator.createContentsZodSchema),
+  auth(USER_ROLE.super_admin, USER_ROLE.sub_admin, USER_ROLE.admin), 
   contentsController.createContents,
 );
 
 router.put(
   '/',
-  auth(USER_ROLE.super_admin, USER_ROLE.sub_admin, USER_ROLE.admin),
-  upload.fields([{ name: 'banner', maxCount: 5 }]),
-  parseData(),
+  auth(USER_ROLE.super_admin, USER_ROLE.sub_admin, USER_ROLE.admin), 
   contentsController.updateContents,
 );
-
-router.delete('/:key', contentsController.deleteBanner);
+ 
 
 router.get('/:id', contentsController.getContentsById);
 

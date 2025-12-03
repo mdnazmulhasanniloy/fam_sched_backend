@@ -6,7 +6,12 @@ import AppError from '../../error/AppError';
 import { pubClient } from '../../redis';
 
 const createPackage = async (payload: IPackage) => {
-  const result = await Package.create(payload);
+  // Always set empty updateHistory for new package
+  const result = await Package.create({
+    ...payload,
+    updateHistory: [], // ensure safe for Flutter
+  });
+
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Failed to create package');
   }
@@ -19,10 +24,8 @@ const createPackage = async (payload: IPackage) => {
       await pubClient.del(keys);
     }
 
-    // Optionally, clear single package cache if updating an existing unverified package
-    if (result?._id) {
-      await pubClient.del('package:' + result?._id?.toString());
-    }
+    // Clear single package cache (if exists)
+    await pubClient.del('package:' + result._id.toString());
   } catch (err) {
     console.error('Redis cache invalidation error (createPackage):', err);
   }
@@ -110,17 +113,52 @@ const getPackageById = async (id: string) => {
 };
 
 const updatePackage = async (id: string, payload: Partial<IPackage>) => {
-  const result = await Package.findByIdAndUpdate(id, payload, { new: true });
+  // Find existing package
+  const existing = await Package.findById(id);
+  if (!existing) {
+    throw new Error('Package not found');
+  }
+
+  const updateHistory: any[] = []; 
+
+  // Track changed fields for history
+  Object.keys(payload).forEach(field => {
+    const oldValue = (existing as any)[field];
+    const newValue = (payload as any)[field];
+    if (oldValue !== newValue) {
+      updateHistory.push({
+        field,
+        oldValue,
+        newValue,
+        updatedAt: new Date(),
+      });
+    }
+  });
+
+  // Apply update
+  const result = await Package.findByIdAndUpdate(
+    id,
+    {
+      $set: payload,
+      ...(updateHistory.length > 0 && {
+        $push: {
+          updateHistory: { $each: updateHistory, $slice: -2 },
+        },
+      }),
+    },
+    { new: true },
+  );
+
   if (!result) {
     throw new Error('Failed to update Package');
   }
 
   // 🔹 Redis cache invalidation
   try {
-    // single package cache delete
+    // delete single package cache
     await pubClient.del('package:' + id);
 
-    // package list cache clear
+    // delete package list caches
     const keys = await pubClient.keys('package:*');
     if (keys.length > 0) {
       await pubClient.del(keys);

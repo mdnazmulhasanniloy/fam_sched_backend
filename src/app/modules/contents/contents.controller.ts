@@ -4,7 +4,7 @@ import { contentsService } from './contents.service';
 import sendResponse from '../../utils/sendResponse';
 
 const createContents = catchAsync(async (req: Request, res: Response) => {
-  const result = await contentsService.createContents(req.body, req.files);
+  const result = await contentsService.createContents(req.body);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -37,7 +37,7 @@ const getContentsById = catchAsync(async (req: Request, res: Response) => {
 
 // Update contents
 const updateContents = catchAsync(async (req: Request, res: Response) => {
-  const result = await contentsService.updateContents(req.body, req.files);
+  const result = await contentsService.updateContents(req.body);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -56,15 +56,6 @@ const deleteContents = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
-const deleteBanner = catchAsync(async (req: Request, res: Response) => {
-  const result = await contentsService.deleteBanner(req.params.key);
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'Content image deleted successfully',
-    data: result,
-  });
-});
 
 export const contentsController = {
   createContents,
@@ -72,5 +63,4 @@ export const contentsController = {
   getContentsById,
   updateContents,
   deleteContents,
-  deleteBanner,
 };

@@ -11,30 +11,12 @@ const contentsSchema = new Schema<IContents>(
     },
     privacyPolicy: {
       type: String,
-    },
-    banner: [
-      {
-        key: {
-          type: String,
-          required: true,
-        },
-        url: { type: String, required: true },
-      },
-    ],
-    supports: {
-      type: String,
-    },
-    faq: {
-      type: String,
-    },
+    }, 
     isDeleted: {
       type: Boolean,
       default: false,
     },
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-    },
+  
   },
   {
     timestamps: true,
