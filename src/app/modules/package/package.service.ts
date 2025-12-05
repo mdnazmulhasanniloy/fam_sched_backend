@@ -119,7 +119,7 @@ const updatePackage = async (id: string, payload: Partial<IPackage>) => {
     throw new Error('Package not found');
   }
 
-  const updateHistory: any[] = []; 
+  const updateHistory: any[] = [];
 
   // Track changed fields for history
   Object.keys(payload).forEach(field => {
@@ -142,7 +142,7 @@ const updatePackage = async (id: string, payload: Partial<IPackage>) => {
       $set: payload,
       ...(updateHistory.length > 0 && {
         $push: {
-          updateHistory: { $each: updateHistory, $slice: -2 },
+          updateHistory: { $each: updateHistory },
         },
       }),
     },
