@@ -1,7 +1,7 @@
 import { Model, Types } from 'mongoose';
 
 export interface IUser {
-  _id?: Types.ObjectId;
+  _id: Types.ObjectId | string;
   status: string;
   profile: string;
   name: string;

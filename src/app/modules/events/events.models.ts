@@ -47,6 +47,9 @@ const eventsSchema = new Schema<IEvents>(
       type: String,
       default: null,
     },
+    notifyHistory:[{
+
+    }],
     isAssignMe: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },

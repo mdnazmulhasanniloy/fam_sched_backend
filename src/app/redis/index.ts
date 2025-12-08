@@ -20,6 +20,21 @@ const messageQueue = new Queue('save_messages', {
   },
 });
 
+const reminderQueue = new Queue('reminder_queue', {
+  connection: {
+    host: 'localhost',
+    port: 6379,
+  },
+});
+
+const messageFlushQueue = new Queue('message_flush', {
+  connection: { host: 'localhost', port: 6379 },
+});
+
+const notificationFlushQueue = new Queue('notification_flush', {
+  connection: { host: 'localhost', port: 6379 },
+});
+
 // const messageQueue = new Queue('save_messages', {
 //   connection: pubClient,
 // });
@@ -41,4 +56,12 @@ subClient.subscribe('new_message_channel', async rawMessage => {
   }
 });
 
-export { pubClient, subClient, connectRedis, messageQueue };
+export {
+  pubClient,
+  subClient,
+  connectRedis,
+  messageQueue,
+  reminderQueue,
+  messageFlushQueue,
+  notificationFlushQueue,
+};

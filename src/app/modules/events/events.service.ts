@@ -4,12 +4,18 @@ import Events from './events.models';
 import AppError from '../../error/AppError';
 import { pubClient } from '../../redis';
 import QueryBuilder from '../../core/builder/QueryBuilder';
+import { scheduleReminder } from '../../utils/scheduleReminder';
+import { deleteEventsCache } from '../../utils/deleteEventsCache';
 
 const createEvents = async (payload: IEvents) => {
   const result = await Events.create(payload);
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Failed to create events');
   }
+
+  //notification scheduler
+  await deleteEventsCache(result._id);
+  await scheduleReminder(result);
 
   // 🔹 Redis cache invalidation
   try {
@@ -115,6 +121,9 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
     throw new Error('Failed to update Events');
   }
 
+  await deleteEventsCache(id);
+  await scheduleReminder(result);
+
   // 🔹 Redis cache invalidation
   try {
     // single events cache delete
@@ -141,6 +150,9 @@ const deleteEvents = async (id: string) => {
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Failed to delete events');
   }
+
+  await deleteEventsCache(id);
+  await scheduleReminder(result);
 
   // 🔹 Redis cache invalidation
   try {
