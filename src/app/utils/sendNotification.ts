@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import firebaseAdmin from './firebase';
 import AppError from '../error/AppError';
-import { pubClient } from '../redis';
+import { notificationQueue } from '../redis';
 import { modeType } from '../modules/notification/notification.interface';
 
 type NotificationPayload = {
@@ -18,30 +18,25 @@ export const sendSingleNotification = async (
   payload: NotificationPayload,
 ) => {
   try {
+    console.log(payload)
     if (!fcmToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
-
     const { title, body, data, userId, save = true } = payload;
 
-    await firebaseAdmin
-      .messaging()
-      .send({
-        token: fcmToken,
-        notification: { title, body },
-        data: data || {},
-      });
+    const nn = await firebaseAdmin.messaging().send({
+      token: fcmToken,
+      notification: { title, body },
+      data: data || {},
+    });
 
     if (save) {
-      await pubClient.rPush(
-        'notification',
-        JSON.stringify({
-          receiver: userId,
-          message: title,
-          description: body,
-          refference: data?._id,
-          model_type: modeType.Events,
-        }),
-      );
+      await notificationQueue.add('send_notification', {
+        receiver: userId,
+        message: title,
+        description: body,
+        refference: data?._id,
+        model_type: modeType.Events,
+      });
     }
 
     console.log('✅ Notification sent:', title);

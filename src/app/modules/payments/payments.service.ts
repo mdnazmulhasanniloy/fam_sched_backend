@@ -19,7 +19,7 @@ import StripeService from '../../core/stripe/stripe';
 import Package from '../package/package.models';
 import { populate } from 'dotenv';
 import QueryBuilder from '../../core/builder/QueryBuilder';
-import { pubClient } from '../../redis';
+import { notificationQueue, pubClient } from '../../redis';
 
 interface IPaymentItems {
   price_data: {
@@ -369,31 +369,26 @@ const confirmPayment = async (query: Record<string, any>) => {
     );
     const admin = await User.getAdmin();
 
-    await pubClient.rPush(
-      'notification',
-      JSON.stringify({
-        receiver: user?._id,
-        message: 'Subscription Successful',
-        description:
-          'Your payment has been received and your subscription is now active.',
-        refference: paymentId,
-        model_type: modeType.Payments,
-      }),
-    );
+    await notificationQueue.add('send_notification', {
+      receiver: user?._id,
+      message: 'Subscription Successful',
+      description:
+        'Your payment has been received and your subscription is now active.',
+      refference: paymentId,
+      model_type: modeType.Payments,
+    });
 
     if (admin) {
-      await pubClient.rPush(
-        'notification',
-        JSON.stringify({
-          receiver: admin?._id,
-          message: 'New Subscription Payment Received',
-          description:
-            'A user has successfully subscribed to a package and the payment is completed.',
-          refference: paymentId,
-          model_type: modeType.Payments,
-        }),
-      );
+      await notificationQueue.add('send_notification', {
+        receiver: admin?._id,
+        message: 'New Subscription Payment Received',
+        description:
+          'A user has successfully subscribed to a package and the payment is completed.',
+        refference: paymentId,
+        model_type: modeType.Payments,
+      });
     }
+
     await session.commitTransaction();
     return {
       ...updatedPayments?.toObject(),

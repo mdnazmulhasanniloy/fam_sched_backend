@@ -6,6 +6,7 @@
     "build": "tsc",
     "generate": "node generateFolder.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "worker:reminder": "ts-node src/app/workers/reminder.worker.ts",
     "lint:check": "eslint --ignore-path .eslintignore --ext .js,.ts .",
     "lint:fix": "eslint . --fix",
     "start": "tsc --watch",

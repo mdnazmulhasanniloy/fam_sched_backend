@@ -12,56 +12,15 @@ const connectRedis = async () => {
   console.log(colors.blue.bold('✨ Connected to Redis server'));
 };
 
-// BullMQ Queue (use proper connection object)
-const messageQueue = new Queue('save_messages', {
+const eventQueue = new Queue('event_notification', {
   connection: {
     host: 'localhost',
     port: 6379,
   },
 });
 
-const reminderQueue = new Queue('reminder_queue', {
-  connection: {
-    host: 'localhost',
-    port: 6379,
-  },
-});
-
-const messageFlushQueue = new Queue('message_flush', {
+const notificationQueue = new Queue('general_notification', {
   connection: { host: 'localhost', port: 6379 },
 });
 
-const notificationFlushQueue = new Queue('notification_flush', {
-  connection: { host: 'localhost', port: 6379 },
-});
-
-// const messageQueue = new Queue('save_messages', {
-//   connection: pubClient,
-// });
-
-// Subscribe to new message channel
-subClient.subscribe('new_message_channel', async rawMessage => {
-  const message = JSON.parse(rawMessage);
-
-  // Bonus part: Save to message queue
-  await messageQueue.add('save', message);
-
-  // Emit to receiver via socket
-  const receiverSocketId = await pubClient.hGet(
-    'socket_map',
-    message.receiverId,
-  );
-  if (receiverSocketId) {
-    // io.to(receiverSocketId).emit('new_message', message);
-  }
-});
-
-export {
-  pubClient,
-  subClient,
-  connectRedis,
-  messageQueue,
-  reminderQueue,
-  messageFlushQueue,
-  notificationFlushQueue,
-};
+export { pubClient, subClient, connectRedis, eventQueue, notificationQueue };

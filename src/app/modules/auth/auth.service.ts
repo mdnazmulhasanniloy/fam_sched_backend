@@ -8,7 +8,7 @@ import {
   TResetPassword,
 } from './auth.interface';
 import config from '../../config';
-import { createToken, verifyToken } from './auth.utils';
+import { createToken, isValidFcmToken, verifyToken } from './auth.utils';
 import { generateOtp } from '../../utils/otpGenerator';
 import moment from 'moment';
 import { sendEmail } from '../../utils/mailSender';
@@ -41,6 +41,9 @@ const login = async (payload: TLogin, req: Request) => {
   if (!user?.verification?.status) {
     throw new AppError(httpStatus.FORBIDDEN, 'User account is not verified');
   }
+
+  if (await isValidFcmToken(payload?.fcmToken))
+    throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
   const jwtPayload: { userId: string; role: string } = {
     userId: user?._id?.toString() as string,
     role: user?.role,

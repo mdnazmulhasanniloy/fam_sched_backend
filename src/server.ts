@@ -7,7 +7,9 @@ import { defaultTask } from './app/utils/defaultTask';
 import { exec } from 'child_process';
 import colors from 'colors';
 import initializeSocketIO from './app/socket';
-import './app/job/croneJob';
+// import './app/job/croneJob';
+import './app/job/event.worker';
+import './app/job/notification.worker';
 
 let server: Server;
 const socketServer = createServer(app);

@@ -3,14 +3,14 @@ import { IMember, IMemberCreate } from './member.interface';
 import Member from './member.models';
 import QueryBuilder from '../../core/builder/QueryBuilder';
 import AppError from '../../error/AppError';
-import { User } from '../user/user.models'; 
+import { User } from '../user/user.models';
 import { modeType } from '../notification/notification.interface';
 import { USER_ROLE } from '../user/user.constants';
 import { sendEmail } from '../../utils/mailSender';
 import path from 'path';
 import fs from 'fs';
 import generateCryptoString from '../../utils/generateCryptoString';
-import { pubClient } from '../../redis';
+import { notificationQueue, pubClient } from '../../redis';
 
 const createMember = async (payload: IMemberCreate) => {
   const randomPass = generateCryptoString(6);
@@ -21,16 +21,13 @@ const createMember = async (payload: IMemberCreate) => {
       user: payload.user,
       member: isExists._id,
     });
-    await pubClient.rPush(
-      'notification',
-      JSON.stringify({
-        receiver: isExists._id,
-        message: `You have been added as a member`,
-        description: `${user!?.name} has added you to their member list. You can now access associated features and updates.`,
-        refference: member?._id,
-        model_type: modeType.Member,
-      }),
-    );
+    await notificationQueue.add('send_notification', {
+      receiver: isExists._id,
+      message: `You have been added as a member`,
+      description: `${user!?.name} has added you to their member list. You can now access associated features and updates.`,
+      refference: member?._id,
+      model_type: modeType.Member,
+    });
     return member;
   }
 

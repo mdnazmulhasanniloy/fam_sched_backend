@@ -12,7 +12,11 @@ const eventsSchema = new Schema<IEvents>(
       required: true,
       default: null,
     },
-    date: {
+    startEvent: {
+      type: Date,
+      required: true,
+    },
+    endEvent: {
       type: Date,
       required: true,
     },
@@ -26,8 +30,28 @@ const eventsSchema = new Schema<IEvents>(
         ref: 'User',
       },
     ],
-    
-    remainder: {
+
+    remainder1: {
+      value: {
+        type: Number,
+        default: 0,
+      },
+      unit: {
+        type: String,
+        enum: ['m', 'h', 'd', 'w'],
+      },
+    },
+    remainder2: {
+      value: {
+        type: Number,
+        default: 0,
+      },
+      unit: {
+        type: String,
+        enum: ['m', 'h', 'd', 'w'],
+      },
+    },
+    remainder3: {
       value: {
         type: Number,
         default: 0,
@@ -41,15 +65,17 @@ const eventsSchema = new Schema<IEvents>(
     recurring: {
       type: String,
       enum: ['daily', 'weekly', 'monthly', 'off'],
-      default: null,
+      default: 'off',
     },
+    jobIds: [
+      {
+        type: String,
+      },
+    ],
     note: {
       type: String,
       default: null,
     },
-    notifyHistory:[{
-
-    }],
     isAssignMe: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },
