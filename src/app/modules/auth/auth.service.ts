@@ -42,8 +42,9 @@ const login = async (payload: TLogin, req: Request) => {
     throw new AppError(httpStatus.FORBIDDEN, 'User account is not verified');
   }
 
-  if (await isValidFcmToken(payload?.fcmToken))
+  if (!(await isValidFcmToken(payload?.fcmToken)))
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
+
   const jwtPayload: { userId: string; role: string } = {
     userId: user?._id?.toString() as string,
     role: user?.role,
@@ -278,6 +279,9 @@ const googleLogin = async (payload: any, req: Request) => {
     if (!decodedToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
 
+    if (!(await isValidFcmToken(payload?.fcmToken)))
+      throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
+
     if (!decodedToken?.email_verified) {
       throw new AppError(
         httpStatus?.BAD_REQUEST,
@@ -354,6 +358,7 @@ const googleLogin = async (payload: any, req: Request) => {
         refreshToken,
       };
     }
+
     const user = await User.create({
       name: decodedToken?.name,
       email: decodedToken?.email,
@@ -370,6 +375,7 @@ const googleLogin = async (payload: any, req: Request) => {
         httpStatus?.BAD_REQUEST,
         'user account creation failed',
       );
+
     const jwtPayload: { userId: string; role: string } = {
       userId: user?._id?.toString() as string,
       role: user?.role,
@@ -386,6 +392,7 @@ const googleLogin = async (payload: any, req: Request) => {
       config.jwt_refresh_secret as string,
       config.jwt_refresh_expires_in as string,
     );
+
     if (isExist) {
       const ip =
         req.headers['x-forwarded-for']?.toString().split(',')[0] ||

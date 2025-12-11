@@ -15,16 +15,13 @@ export const verifyToken = (token: string, secret: string) => {
   return jwt.verify(token, secret) as JwtPayload;
 };
 
-
-
-
 export const isValidFcmToken = async (token: string) => {
   try {
     await firebaseAdmin.messaging().send({
       token,
       notification: {
-        title: 'valid-check',
-        body: 'checking token validity',
+        title: 'Login Alert!',
+        body: 'New Device Login Successfully!',
       },
     });
 
