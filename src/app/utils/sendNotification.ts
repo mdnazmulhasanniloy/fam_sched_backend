@@ -18,15 +18,17 @@ export const sendSingleNotification = async (
   payload: NotificationPayload,
 ) => {
   try {
-    console.log(payload)
     if (!fcmToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
     const { title, body, data, userId, save = true } = payload;
 
+    const dataPayload: { payload: string } | {} = data
+      ? { payload: JSON.stringify(data?.id) }
+      : {};
     const nn = await firebaseAdmin.messaging().send({
       token: fcmToken,
       notification: { title, body },
-      data: data || {},
+      data: dataPayload,
     });
 
     if (save) {

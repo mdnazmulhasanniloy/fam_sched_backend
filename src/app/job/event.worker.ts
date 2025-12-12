@@ -1,19 +1,23 @@
 import { Worker } from 'bullmq';
 import { User } from '../modules/user/user.models';
 import { sendSingleNotification } from '../utils/sendNotification';
-import { notificationQueue } from '../redis';
+import { connection, notificationQueue } from '../redis';
 import { modeType } from '../modules/notification/notification.interface';
+import Events from '../modules/events/events.models';
 
 new Worker(
   'event_notification',
   async job => {
     const { eventId, userId, title, body } = job.data;
 
+    const event = await Events.findById(eventId);
+
     const user = await User.findById(userId);
-    if (!user?.fcmToken) {
+    if (!user?.fcmToken && !user?.notification) {
       await notificationQueue.add('send_notification', {
         receiver: userId,
         message: title,
+        data: event,
         description: body,
         refference: eventId,
         model_type: modeType.Events,
@@ -24,7 +28,7 @@ new Worker(
     await sendSingleNotification(user.fcmToken, {
       title: title,
       body: body,
-      data: eventId,
+      data: event,
       userId: user?._id?.toString(),
       token: user.fcmToken,
     });
@@ -32,10 +36,7 @@ new Worker(
     console.log('📨 Notification sent for Event:', eventId);
   },
   {
-    connection: {
-      host: 'localhost',
-      port: 6379,
-    },
+    connection: connection,
   },
 );
 

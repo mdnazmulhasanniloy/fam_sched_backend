@@ -187,7 +187,7 @@ const calendarData = async (query: Record<string, any>) => {
             user: new Types.ObjectId(user),
           },
           {
-            includeInSchedule: { $all: new Types.ObjectId(user) },
+            includeInSchedule: { $all: [new Types.ObjectId(user)] },
           },
         ],
       },
@@ -345,7 +345,7 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
             assignTo: new Types.ObjectId(user),
           },
           {
-            includeInSchedule: { $all: new Types.ObjectId(user) },
+            includeInSchedule: { $all: [new Types.ObjectId(user)] },
           },
         ],
       },

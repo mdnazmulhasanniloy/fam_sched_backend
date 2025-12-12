@@ -17,13 +17,14 @@ export const verifyToken = (token: string, secret: string) => {
 
 export const isValidFcmToken = async (token: string) => {
   try {
-    await firebaseAdmin.messaging().send({
+    const notify = await firebaseAdmin.messaging().send({
       token,
       notification: {
         title: 'Login Alert!',
         body: 'New Device Login Successfully!',
       },
     });
+    console.log('🚀 ~ isValidFcmToken ~ notify:', notify);
 
     return true; // valid token
   } catch (err: any) {

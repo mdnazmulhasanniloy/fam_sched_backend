@@ -25,6 +25,7 @@ import firebaseAdmin from '../../utils/firebase';
 
 // Login
 const login = async (payload: TLogin, req: Request) => {
+  console.log(payload);
   const user: IUser | null = await User.isUserExist(payload?.email);
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');

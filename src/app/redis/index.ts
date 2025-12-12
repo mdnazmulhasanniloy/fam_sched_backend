@@ -7,20 +7,33 @@ const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 const pubClient = createClient({ url: redisUrl });
 const subClient = pubClient.duplicate();
 
+const connection = {
+  url: redisUrl,
+};
+
 const connectRedis = async () => {
   await Promise.all([pubClient.connect(), subClient.connect()]);
   console.log(colors.blue.bold('✨ Connected to Redis server'));
 };
 
-const eventQueue = new Queue('event_notification', {
-  connection: {
-    host: 'localhost',
-    port: 6379,
-  },
-});
+const eventQueue = new Queue('event_notification', { connection });
+// const eventQueue = new Queue('event_notification', {
+//   connection: {
+//     host: 'localhost',
+//     port: 6379,
+//   },
+// });
 
-const notificationQueue = new Queue('general_notification', {
-  connection: { host: 'localhost', port: 6379 },
-});
+const notificationQueue = new Queue('general_notification', { connection });
+// const notificationQueue = new Queue('general_notification', {
+//   connection: { host: 'localhost', port: 6379 },
+// });
 
-export { pubClient, subClient, connectRedis, eventQueue, notificationQueue };
+export {
+  pubClient,
+  subClient,
+  connectRedis,
+  eventQueue,
+  notificationQueue,
+  connection,
+};

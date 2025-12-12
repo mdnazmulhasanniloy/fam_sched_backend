@@ -32,6 +32,7 @@ router.patch(
     USER_ROLE.sub_admin,
     USER_ROLE.admin,
     USER_ROLE.user,
+    USER_ROLE.worker,
   ),
   authControllers.changePassword,
 );
