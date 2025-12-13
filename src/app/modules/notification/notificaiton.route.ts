@@ -8,8 +8,9 @@ const router = Router();
 router.get(
   '/',
   auth(
+    USER_ROLE.worker,
     USER_ROLE.user,
-    USER_ROLE.admin, 
+    USER_ROLE.admin,
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
   ),
@@ -19,11 +20,23 @@ router.patch(
   '/',
   auth(
     USER_ROLE.user,
-    USER_ROLE.admin, 
+    USER_ROLE.worker,
+    USER_ROLE.admin,
     USER_ROLE.sub_admin,
     USER_ROLE.super_admin,
   ),
   notificationControllers.markAsDone,
+);
+router.delete(
+  '/',
+  auth(
+    USER_ROLE.user,
+    USER_ROLE.worker,
+    USER_ROLE.admin,
+    USER_ROLE.sub_admin,
+    USER_ROLE.super_admin,
+  ),
+  notificationControllers.deleteAll,
 );
 
 export const notificationRoutes = router;
