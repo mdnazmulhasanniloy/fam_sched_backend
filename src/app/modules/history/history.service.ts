@@ -42,7 +42,7 @@ const getAllHistory = async (query: Record<string, any>) => {
     if (cachedData) {
       return JSON.parse(cachedData);
     }
-  const historyModel = new QueryBuilder(History.find({isDeleted:false}), query)
+  const historyModel = new QueryBuilder(History.find({}), query)
     .search([""])
     .filter()
     .paginate()
@@ -62,7 +62,7 @@ const response = { data, meta };
   
   } catch (err) {
     console.error('Redis caching error (getAllHistory):', err);
-    const historyModel = new QueryBuilder(History.find({isDeleted:false}), query)
+    const historyModel = new QueryBuilder(History.find({}), query)
     .search([""])
     .filter()
     .paginate()
@@ -91,7 +91,7 @@ try{
 
 // 2. Fetch from DB
    const result = await History.findById(id);
-  if (!result || result?.isDeleted) {
+  if (!result) {
     throw new Error('History not found!');
   }
 
@@ -102,7 +102,7 @@ try{
 }catch (err) {
  console.error('Redis caching error (geHistoryById):', err);
   const result = await History.findById(id);
-  if (!result || result?.isDeleted) {
+  if (!result) {
     throw new Error('History not found!');
   }
   return result;

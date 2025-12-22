@@ -5,6 +5,7 @@ import moment from 'moment';
 
 // const calendarData = async (query: Record<string, any>) => {
 //   const { user, month, year } = query;
+
 //   const startOfMonth =
 //     year && month
 //       ? now(
@@ -27,25 +28,47 @@ import moment from 'moment';
 //           .toDate()
 //       : now().endOf('month').toDate();
 
-//   const calendarData = await Events.aggregate([
+//   const data = await Events.aggregate([
 //     {
 //       $match: {
-//         user: new Types.ObjectId(user),
-//         date: { $gte: startOfMonth, $lte: endOfMonth },
 //         isDeleted: false,
+//         $or: [
+//           {
+//             user: new Types.ObjectId(user),
+//           },
+//           {
+//             includeInSchedule: { $all: [new Types.ObjectId(user)] },
+//           },
+//         ],
+//       },
+//     },
+//     {
+//       $match: {
+//         // IMPORTANT: event overlaps with month range
+//         $or: [
+//           {
+//             startEvent: { $lte: endOfMonth },
+//             endEvent: { $gte: startOfMonth },
+//           },
+//         ],
 //       },
 //     },
 //     {
 //       $project: {
 //         _id: 1,
 //         title: 1,
-//         date: 1,
+//         startEvent: 1,
+//         endEvent: 1,
 //         assignTo: 1,
-//         remainder: 1,
+//         remainder1: 1,
+//         remainder2: 1,
+//         remainder3: 1,
 //         recurring: 1,
 //         note: 1,
 //       },
 //     },
+
+//     // Recurring Logic Adjusted for startEvent instead of date
 //     {
 //       $addFields: {
 //         recurringDate: {
@@ -54,87 +77,72 @@ import moment from 'moment';
 //               {
 //                 case: { $eq: ['$recurring', 'daily'] },
 //                 then: {
-//                   $dateAdd: { startDate: '$date', unit: 'day', amount: 1 },
+//                   $dateAdd: {
+//                     startDate: '$startEvent',
+//                     unit: 'day',
+//                     amount: 1,
+//                   },
 //                 },
 //               },
 //               {
 //                 case: { $eq: ['$recurring', 'weekly'] },
 //                 then: {
-//                   // If 'weekly', find all dates for the same day of the week within the month
-//                   $let: {
-//                     vars: {
-//                       startDate: '$date',
-//                       currentDay: { $dayOfWeek: '$date' }, // Get the day of the week (0-6, Sun-Sat)
-//                     },
-//                     in: {
-//                       $map: {
-//                         input: { $range: [0, 5] }, // Loop through the 4 weeks in the month (0, 1, 2, 3, 4)
-//                         as: 'week',
-//                         in: {
-//                           $dateAdd: {
-//                             startDate: {
-//                               $dateFromParts: {
-//                                 year: { $year: '$date' },
-//                                 month: { $month: '$date' },
-//                                 day: {
-//                                   $subtract: [
-//                                     { $dayOfMonth: '$date' },
-//                                     { $mod: [{ $dayOfWeek: '$date' }, 7] },
-//                                   ],
-//                                 }, // Find the start day of the week
-//                               },
-//                             },
-//                             unit: 'week',
-//                             amount: '$$week', // Add weeks (0 to 4)
-//                           },
-//                         },
-//                       },
-//                     },
+//                   $dateAdd: {
+//                     startDate: '$startEvent',
+//                     unit: 'week',
+//                     amount: 1,
 //                   },
 //                 },
 //               },
 //               {
 //                 case: { $eq: ['$recurring', 'monthly'] },
 //                 then: {
-//                   $dateAdd: { startDate: '$date', unit: 'month', amount: 1 },
+//                   $dateAdd: {
+//                     startDate: '$startEvent',
+//                     unit: 'month',
+//                     amount: 1,
+//                   },
 //                 },
 //               },
 //               {
 //                 case: { $eq: ['$recurring', 'off'] },
-//                 then: '$date',
+//                 then: '$startEvent',
 //               },
 //             ],
-//             default: '$date',
+//             default: '$startEvent',
 //           },
 //         },
 //       },
 //     },
-//     {
-//       $unwind: '$recurringDate', // Flatten the array of recurring dates
-//     },
+
 //     {
 //       $group: {
 //         _id: {
-//           year: { $year: '$recurringDate' },
-//           month: { $month: '$recurringDate' },
-//           day: { $dayOfMonth: '$recurringDate' },
+//           year: { $year: '$startEvent' },
+//           month: { $month: '$startEvent' },
+//           day: { $dayOfMonth: '$startEvent' },
 //         },
 //         events: {
 //           $push: {
 //             _id: '$_id',
 //             title: '$title',
-//             date: '$date',
+//             startEvent: '$startEvent',
+//             endEvent: '$endEvent',
 //             assignTo: '$assignTo',
-//             remainder: '$remainder',
+//             remainder1: '$remainder1',
+//             remainder2: '$remainder2',
+//             remainder3: '$remainder3',
 //             recurring: '$recurring',
 //             note: '$note',
 //           },
 //         },
 //       },
 //     },
+
 //     {
 //       $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 },
 //     },
+
 //     {
 //       $project: {
 //         date: {
@@ -150,7 +158,7 @@ import moment from 'moment';
 //     },
 //   ]);
 
-//   return calendarData;
+//   return data;
 // };
 
 const calendarData = async (query: Record<string, any>) => {
@@ -158,157 +166,85 @@ const calendarData = async (query: Record<string, any>) => {
 
   const startOfMonth =
     year && month
-      ? now(
-          moment()
-            .year(year)
-            .month(month - 1),
-        )
+      ? moment()
+          .year(year)
+          .month(month - 1)
           .startOf('month')
-          .toDate()
-      : now().startOf('month').toDate();
+      : moment().startOf('month');
 
   const endOfMonth =
     year && month
-      ? now(
-          moment()
-            .year(year)
-            .month(month - 1),
-        )
+      ? moment()
+          .year(year)
+          .month(month - 1)
           .endOf('month')
-          .toDate()
-      : now().endOf('month').toDate();
+      : moment().endOf('month');
 
-  const data = await Events.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        $or: [
-          {
-            user: new Types.ObjectId(user),
-          },
-          {
-            includeInSchedule: { $all: [new Types.ObjectId(user)] },
-          },
-        ],
-      },
-    },
-    {
-      $match: {
-        // IMPORTANT: event overlaps with month range
-        $or: [
-          {
-            startEvent: { $lte: endOfMonth },
-            endEvent: { $gte: startOfMonth },
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        _id: 1,
-        title: 1,
-        startEvent: 1,
-        endEvent: 1,
-        assignTo: 1,
-        remainder1: 1,
-        remainder2: 1,
-        remainder3: 1,
-        recurring: 1,
-        note: 1,
-      },
-    },
+  // 1️⃣ MongoDB থেকে raw events
+  const events = await Events.find({
+    isDeleted: false,
+    $or: [
+      { user: new Types.ObjectId(user) },
+      { includeInSchedule: new Types.ObjectId(user) },
+    ],
+    startEvent: { $lte: endOfMonth.toDate() },
+    endEvent: { $gte: startOfMonth.toDate() },
+  }).lean();
 
-    // Recurring Logic Adjusted for startEvent instead of date
-    {
-      $addFields: {
-        recurringDate: {
-          $switch: {
-            branches: [
-              {
-                case: { $eq: ['$recurring', 'daily'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'day',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'weekly'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'week',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'monthly'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'month',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'off'] },
-                then: '$startEvent',
-              },
-            ],
-            default: '$startEvent',
-          },
-        },
-      },
-    },
+  // 2️⃣ Calendar map
+  const calendarMap: Record<string, any[]> = {};
 
-    {
-      $group: {
-        _id: {
-          year: { $year: '$startEvent' },
-          month: { $month: '$startEvent' },
-          day: { $dayOfMonth: '$startEvent' },
-        },
-        events: {
-          $push: {
-            _id: '$_id',
-            title: '$title',
-            startEvent: '$startEvent',
-            endEvent: '$endEvent',
-            assignTo: '$assignTo',
-            remainder1: '$remainder1',
-            remainder2: '$remainder2',
-            remainder3: '$remainder3',
-            recurring: '$recurring',
-            note: '$note',
-          },
-        },
-      },
-    },
+  // 3️⃣ Recurring expand logic
+  for (const event of events) {
+    let current = moment(event.startEvent);
 
-    {
-      $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 },
-    },
+    while (current.isSameOrBefore(event.endEvent)) {
+      if (
+        current.isSameOrAfter(startOfMonth) &&
+        current.isSameOrBefore(endOfMonth)
+      ) {
+        const dateKey = current.format('YYYY-MM-DD');
 
-    {
-      $project: {
-        date: {
-          $dateFromParts: {
-            year: '$_id.year',
-            month: '$_id.month',
-            day: '$_id.day',
-          },
-        },
-        events: 1,
-        _id: 0,
-      },
-    },
-  ]);
+        if (!calendarMap[dateKey]) {
+          calendarMap[dateKey] = [];
+        }
 
-  return data;
+        calendarMap[dateKey].push({
+          _id: event._id,
+          title: event.title,
+          startEvent: event.startEvent,
+          endEvent: event.endEvent,
+          assignTo: event.assignTo,
+          remainder1: event.remainder1,
+          remainder2: event.remainder2,
+          remainder3: event.remainder3,
+          recurring: event.recurring,
+          note: event.note,
+        });
+      }
+
+      // recurring rule
+      if (event.recurring === 'daily') {
+        current.add(1, 'day');
+      } else if (event.recurring === 'weekly') {
+        current.add(1, 'week');
+      } else if (event.recurring === 'monthly') {
+        current.add(1, 'month');
+      } else {
+        break; // recurring = off
+      }
+    }
+  }
+
+  // 4️⃣ Final calendar array
+  const result = Object.keys(calendarMap)
+    .sort()
+    .map(date => ({
+      date: new Date(date),
+      events: calendarMap[date],
+    }));
+
+  return result;
 };
 
 const WorkerCalendarData = async (query: Record<string, any>) => {
@@ -316,157 +252,215 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
 
   const startOfMonth =
     year && month
-      ? now(
-          moment()
-            .year(year)
-            .month(month - 1),
-        )
+      ? moment()
+          .year(year)
+          .month(month - 1)
           .startOf('month')
-          .toDate()
-      : now().startOf('month').toDate();
+      : moment().startOf('month');
 
   const endOfMonth =
     year && month
-      ? now(
-          moment()
-            .year(year)
-            .month(month - 1),
-        )
+      ? moment()
+          .year(year)
+          .month(month - 1)
           .endOf('month')
-          .toDate()
-      : now().endOf('month').toDate();
+      : moment().endOf('month');
 
-  const data = await Events.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        $or: [
-          {
-            assignTo: new Types.ObjectId(user),
-          },
-          {
-            includeInSchedule: { $all: [new Types.ObjectId(user)] },
-          },
-        ],
-      },
-    },
-    {
-      $match: {
-        // IMPORTANT: event overlaps with month range
-        $or: [
-          {
-            startEvent: { $lte: endOfMonth },
-            endEvent: { $gte: startOfMonth },
-          },
-        ],
-      },
-    },
-    {
-      $project: {
-        _id: 1,
-        title: 1,
-        startEvent: 1,
-        endEvent: 1,
-        assignTo: 1,
-        remainder1: 1,
-        remainder2: 1,
-        remainder3: 1,
-        recurring: 1,
-        note: 1,
-      },
-    },
+  const events = await Events.find({
+    isDeleted: false,
+    $or: [
+      { assignTo: new Types.ObjectId(user) },
+      { includeInSchedule: new Types.ObjectId(user) },
+    ],
+    startEvent: { $lte: endOfMonth.toDate() },
+    endEvent: { $gte: startOfMonth.toDate() },
+  }).lean();
+  // 2️⃣ Calendar map
+  const calendarMap: Record<string, any[]> = {};
 
-    // Recurring Logic Adjusted for startEvent instead of date
-    {
-      $addFields: {
-        recurringDate: {
-          $switch: {
-            branches: [
-              {
-                case: { $eq: ['$recurring', 'daily'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'day',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'weekly'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'week',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'monthly'] },
-                then: {
-                  $dateAdd: {
-                    startDate: '$startEvent',
-                    unit: 'month',
-                    amount: 1,
-                  },
-                },
-              },
-              {
-                case: { $eq: ['$recurring', 'off'] },
-                then: '$startEvent',
-              },
-            ],
-            default: '$startEvent',
-          },
-        },
-      },
-    },
+  // 3️⃣ Recurring expand logic
+  for (const event of events) {
+    let current = moment(event.startEvent);
 
-    {
-      $group: {
-        _id: {
-          year: { $year: '$startEvent' },
-          month: { $month: '$startEvent' },
-          day: { $dayOfMonth: '$startEvent' },
-        },
-        events: {
-          $push: {
-            _id: '$_id',
-            title: '$title',
-            startEvent: '$startEvent',
-            endEvent: '$endEvent',
-            assignTo: '$assignTo',
-            remainder1: '$remainder1',
-            remainder2: '$remainder2',
-            remainder3: '$remainder3',
-            recurring: '$recurring',
-            note: '$note',
-          },
-        },
-      },
-    },
+    while (current.isSameOrBefore(event.endEvent)) {
+      if (
+        current.isSameOrAfter(startOfMonth) &&
+        current.isSameOrBefore(endOfMonth)
+      ) {
+        const dateKey = current.format('YYYY-MM-DD');
 
-    {
-      $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 },
-    },
+        if (!calendarMap[dateKey]) {
+          calendarMap[dateKey] = [];
+        }
 
-    {
-      $project: {
-        date: {
-          $dateFromParts: {
-            year: '$_id.year',
-            month: '$_id.month',
-            day: '$_id.day',
-          },
-        },
-        events: 1,
-        _id: 0,
-      },
-    },
-  ]);
+        calendarMap[dateKey].push({
+          _id: event._id,
+          title: event.title,
+          startEvent: event.startEvent,
+          endEvent: event.endEvent,
+          assignTo: event.assignTo,
+          remainder1: event.remainder1,
+          remainder2: event.remainder2,
+          remainder3: event.remainder3,
+          recurring: event.recurring,
+          note: event.note,
+        });
+      }
 
-  return data;
+      // recurring rule
+      if (event.recurring === 'daily') {
+        current.add(1, 'day');
+      } else if (event.recurring === 'weekly') {
+        current.add(1, 'week');
+      } else if (event.recurring === 'monthly') {
+        current.add(1, 'month');
+      } else {
+        break; // recurring = off
+      }
+    }
+  }
+
+  // 4️⃣ Final calendar array
+  const result = Object.keys(calendarMap)
+    .sort()
+    .map(date => ({
+      date: new Date(date),
+      events: calendarMap[date],
+    }));
+
+  return result;
+
+  // const data = await Events.aggregate([
+  //   {
+  //     $match: {
+  //       isDeleted: false,
+  //       $or: [
+  //         {
+  //           assignTo: new Types.ObjectId(user),
+  //         },
+  //         {
+  //           includeInSchedule: { $all: [new Types.ObjectId(user)] },
+  //         },
+  //       ],
+  //     },
+  //   },
+  //   {
+  //     $match: {
+  //       // IMPORTANT: event overlaps with month range
+  //       $or: [
+  //         {
+  //           startEvent: { $lte: endOfMonth },
+  //           endEvent: { $gte: startOfMonth },
+  //         },
+  //       ],
+  //     },
+  //   },
+  //   {
+  //     $project: {
+  //       _id: 1,
+  //       title: 1,
+  //       startEvent: 1,
+  //       endEvent: 1,
+  //       assignTo: 1,
+  //       remainder1: 1,
+  //       remainder2: 1,
+  //       remainder3: 1,
+  //       recurring: 1,
+  //       note: 1,
+  //     },
+  //   },
+
+  //   // Recurring Logic Adjusted for startEvent instead of date
+  //   {
+  //     $addFields: {
+  //       recurringDate: {
+  //         $switch: {
+  //           branches: [
+  //             {
+  //               case: { $eq: ['$recurring', 'daily'] },
+  //               then: {
+  //                 $dateAdd: {
+  //                   startDate: '$startEvent',
+  //                   unit: 'day',
+  //                   amount: 1,
+  //                 },
+  //               },
+  //             },
+  //             {
+  //               case: { $eq: ['$recurring', 'weekly'] },
+  //               then: {
+  //                 $dateAdd: {
+  //                   startDate: '$startEvent',
+  //                   unit: 'week',
+  //                   amount: 1,
+  //                 },
+  //               },
+  //             },
+  //             {
+  //               case: { $eq: ['$recurring', 'monthly'] },
+  //               then: {
+  //                 $dateAdd: {
+  //                   startDate: '$startEvent',
+  //                   unit: 'month',
+  //                   amount: 1,
+  //                 },
+  //               },
+  //             },
+  //             {
+  //               case: { $eq: ['$recurring', 'off'] },
+  //               then: '$startEvent',
+  //             },
+  //           ],
+  //           default: '$startEvent',
+  //         },
+  //       },
+  //     },
+  //   },
+
+  //   {
+  //     $group: {
+  //       _id: {
+  //         year: { $year: '$startEvent' },
+  //         month: { $month: '$startEvent' },
+  //         day: { $dayOfMonth: '$startEvent' },
+  //       },
+  //       events: {
+  //         $push: {
+  //           _id: '$_id',
+  //           title: '$title',
+  //           startEvent: '$startEvent',
+  //           endEvent: '$endEvent',
+  //           assignTo: '$assignTo',
+  //           remainder1: '$remainder1',
+  //           remainder2: '$remainder2',
+  //           remainder3: '$remainder3',
+  //           recurring: '$recurring',
+  //           note: '$note',
+  //         },
+  //       },
+  //     },
+  //   },
+
+  //   {
+  //     $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 },
+  //   },
+
+  //   {
+  //     $project: {
+  //       date: {
+  //         $dateFromParts: {
+  //           year: '$_id.year',
+  //           month: '$_id.month',
+  //           day: '$_id.day',
+  //         },
+  //       },
+  //       events: 1,
+  //       _id: 0,
+  //     },
+  //   },
+  // ]);
+
+  // return data;
 };
 
 export const homepageDataService = {

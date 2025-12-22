@@ -23,8 +23,7 @@ export const isValidFcmToken = async (token: string) => {
         title: 'Login Alert!',
         body: 'New Device Login Successfully!',
       },
-    });
-    console.log('🚀 ~ isValidFcmToken ~ notify:', notify);
+    }); 
 
     return true; // valid token
   } catch (err: any) {

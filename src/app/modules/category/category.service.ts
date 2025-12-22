@@ -2,8 +2,8 @@
 import httpStatus from 'http-status';
 import { ICategory } from './category.interface';
 import Category from './category.models';
-import QueryBuilder from '../../class/builder/QueryBuilder';
 import AppError from '../../error/AppError';
+import QueryBuilder from '../../core/builder/QueryBuilder';
 
 const createCategory = async (payload: ICategory) => {
   const category = await Category.isExistByName(payload?.name);

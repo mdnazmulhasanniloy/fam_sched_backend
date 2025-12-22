@@ -6,6 +6,18 @@
     <title><%= hadeTitle ? hadeTitle :"Success Page" %></title>
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
     <style>
+      :root {
+        --primary: #765d56;
+        --primary-light: #8c7068;
+        --primary-bg: #f0e6e2;
+        --success: #2a8a4b;
+        --danger: #c83636;
+        --text: #333;
+        --text-light: #666;
+        --border: #ddd;
+        --shadow: 0 15px 35px rgba(118, 93, 86, 0.15);
+      }
+
       * {
         margin: 0;
         padding: 0;
@@ -19,7 +31,7 @@
         justify-content: center;
         align-items: center;
         position: relative;
-        background: linear-gradient(135deg, #007dd0 0%, #e9f6ff 100%);
+        background: linear-gradient(135deg, #f9f5f2 0%, #f0e6e2 100%);
       }
 
       .card {
@@ -35,7 +47,7 @@
       }
 
       h1 {
-        color: #367c9a;
+        color: var(--primary);
         font-size: 28px;
         margin: 20px 0 10px;
       }
@@ -67,7 +79,7 @@
       .circle {
         position: absolute;
         border-radius: 50%;
-        background: rgba(105, 184, 236, 0.15);
+        background: rgba(118, 93, 86, 0.08);
         animation: float 6s ease-in-out infinite;
       }
 

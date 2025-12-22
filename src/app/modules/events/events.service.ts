@@ -10,7 +10,7 @@ import { calculateReminderTime, generateRecurringDates } from './events.utils';
 // const createEvents = async (payload: IEvents) => {
 //   if (payload.startEvent) {
 //     payload.startEvent = moment(payload.startEvent).utc().toDate();
-//   }
+//   } 
 
 //   if (payload.endEvent) {
 //     payload.endEvent = moment(payload.endEvent).utc().toDate();

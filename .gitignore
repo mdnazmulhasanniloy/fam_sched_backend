@@ -5,3 +5,4 @@ logs/
 .vercel
 nn.ts
 firebase.json
+dist

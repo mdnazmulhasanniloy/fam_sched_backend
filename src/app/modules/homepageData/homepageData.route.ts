@@ -13,7 +13,7 @@ router.get(
 router.get(
   '/worker-calendar',
   auth(USER_ROLE.worker),
-  homepageDataController.calendarData,
+  homepageDataController.WorkerCalendarData,
 );
 
 export const homepageDataRoutes = router;

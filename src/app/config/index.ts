@@ -18,6 +18,8 @@ export default {
   NODE_ENV: process.env.NODE_ENV,
   port: process.env.PORT,
   ip: process.env.IP,
+  redis_host: process.env.REDIS_HOST,
+  redis_port: process.env.REDIS_PORT,
   database_url: process.env.DATABASE_URL,
   server_url: process.env.SERVER_URL,
   client_Url: process.env.CLIENT_URL,

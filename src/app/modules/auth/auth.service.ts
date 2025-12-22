@@ -25,7 +25,6 @@ import firebaseAdmin from '../../utils/firebase';
 
 // Login
 const login = async (payload: TLogin, req: Request) => {
-  console.log(payload);
   const user: IUser | null = await User.isUserExist(payload?.email);
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -207,10 +206,15 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
-  console.log(user);
-  if (new Date() > user?.verification?.expiresAt) {
+
+  const expiresAtPlus3Min = moment(user.verification.expiresAt)
+    .add(3, 'minutes')
+    ?.toDate();
+
+  if (new Date() > expiresAtPlus3Min) {
     throw new AppError(httpStatus.FORBIDDEN, 'Session has expired');
   }
+
   if (!user?.verification?.status) {
     throw new AppError(httpStatus.FORBIDDEN, 'OTP is not verified yet');
   }
