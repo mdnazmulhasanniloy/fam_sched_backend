@@ -275,6 +275,33 @@ const refreshToken = async (token: string) => {
   };
 };
 
+const generateNewToken = async (userId: string) => {
+  const user = await User.IsUserExistId(userId);
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  const isDeleted = user?.isDeleted;
+
+  if (isDeleted) {
+    throw new AppError(httpStatus.FORBIDDEN, 'This user is deleted');
+  }
+
+  const jwtPayload: IJwtPayload = {
+    userId: user?._id?.toString() as string,
+    role: user.role,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret as string,
+    config.jwt_access_expires_in as string,
+  );
+
+  return {
+    accessToken,
+  };
+};
 const googleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin
@@ -475,4 +502,5 @@ export const authServices = {
   refreshToken,
   googleLogin,
   resetPasswordLink,
+  generateNewToken,
 };

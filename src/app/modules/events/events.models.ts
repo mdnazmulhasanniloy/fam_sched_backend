@@ -64,8 +64,8 @@ const eventsSchema = new Schema<IEvents>(
 
     recurring: {
       type: String,
-      enum: ['daily', 'weekly', 'monthly', 'off'],
-      default: 'off',
+      enum: ['daily', 'weekly', 'monthly', 'none'],
+      default: 'none',
     },
     jobIds: [
       {

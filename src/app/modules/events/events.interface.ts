@@ -15,7 +15,7 @@ export interface IEvents {
   remainder1: IRemainder;
   remainder2: IRemainder;
   remainder3: IRemainder;
-  recurring: 'daily' | 'weekly' | 'monthly' | 'off';
+  recurring: 'daily' | 'weekly' | 'monthly' | 'none';
   note: string;
   jobIds: string[];
   notifyHistory: Date[];

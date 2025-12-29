@@ -20,6 +20,7 @@ import Package from '../package/package.models';
 import { populate } from 'dotenv';
 import QueryBuilder from '../../core/builder/QueryBuilder';
 import { notificationQueue, pubClient } from '../../redis';
+import { createToken } from '../auth/auth.utils';
 
 interface IPaymentItems {
   price_data: {
@@ -389,9 +390,21 @@ const confirmPayment = async (query: Record<string, any>) => {
       });
     }
 
+    const jwtPayload: { userId: string; role: string } = {
+      userId: user?._id?.toString() as string,
+      role: user?.role as string,
+    };
+
+    const accessToken = createToken(
+      jwtPayload,
+      config.jwt_access_secret as string,
+      config.jwt_access_expires_in as string,
+    );
+
     await session.commitTransaction();
     return {
       ...updatedPayments?.toObject(),
+      accessToken,
       chargeDetails,
       package: packages,
     };

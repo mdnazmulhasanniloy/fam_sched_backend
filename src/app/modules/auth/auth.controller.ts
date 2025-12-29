@@ -88,6 +88,15 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const generateNewToken = catchAsync(async (req: Request, res: Response) => {
+  const result = await authServices.generateNewToken(req.user.userId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'token generate successfully',
+    data: result,
+  });
+});
 
 // refresh token
 const refreshToken = catchAsync(async (req: Request, res: Response) => {
@@ -119,4 +128,5 @@ export const authControllers = {
   refreshToken,
   googleLogin,
   resetPasswordLink,
+  generateNewToken,
 };

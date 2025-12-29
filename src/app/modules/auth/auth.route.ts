@@ -24,6 +24,11 @@ router.post(
   validateRequest(authValidation.refreshTokenValidationSchema),
   authControllers.refreshToken,
 );
+router.post(
+  '/generate-new-token',
+  auth(USER_ROLE.worker, USER_ROLE.user),
+  authControllers.generateNewToken,
+);
 
 router.patch(
   '/change-password',
