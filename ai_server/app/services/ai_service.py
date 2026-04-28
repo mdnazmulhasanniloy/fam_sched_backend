@@ -3,6 +3,10 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from datetime import datetime
+
+today = datetime.now().strftime("%Y-%m-%d %A")  # e.g. "2026-04-28 Tuesday"
+
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -61,9 +65,10 @@ EVENT_SCHEMA = {
     }
 }
 
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT = f"""
 You are a smart calendar assistant. 
 The user will describe what they want scheduled.
+Today is {today}. Use this as the base for all relative dates (e.g. "tomorrow", "next week", "in 3 days" etc.).
 You must extract ALL events from the description and return them in structured format.
 
 Rules:
@@ -72,6 +77,7 @@ Rules:
 - Pick sensible reminders (e.g. 10m, 1h, 1d before).
 - If the user says recurring, set the recurring field accordingly.
 - isAssignMe is always true unless stated otherwise.
+- The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
 - Return multiple events if the description implies multiple.
 """
 
