@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 from datetime import datetime
 
+today = datetime.now().strftime("%Y-%m-%d %A")  # e.g. "2026-04-28 Tuesday"
+
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -63,7 +65,7 @@ EVENT_SCHEMA = {
     }
 }
 
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT = f"""
 You are a smart calendar assistant. 
 The user will describe what they want scheduled.
 Today is {today}. Use this as the base for all relative dates (e.g. "tomorrow", "next week", "in 3 days" etc.).
@@ -84,14 +86,10 @@ def parse_events_from_description(description: str) -> list[dict]:
     """
     Takes a plain text description and returns a list of event dicts.
     """
-
-    today = datetime.now().strftime("%Y-%m-%d %A")
-    prompt = SYSTEM_PROMPT.format(today=today)
-
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": prompt},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": description}
         ],
         tools=[EVENT_SCHEMA],
