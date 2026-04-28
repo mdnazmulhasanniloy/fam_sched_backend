@@ -80,7 +80,7 @@ Rules:
 - The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
 - Return multiple events if the description implies multiple.
 """
-# updated time and note
+
 
 def parse_events_from_description(description: str) -> list[dict]:
     """

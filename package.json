@@ -9,12 +9,13 @@
     "worker:reminder": "ts-node src/app/workers/reminder.worker.ts",
     "lint:check": "eslint --ignore-path .eslintignore --ext .js,.ts .",
     "lint:fix": "eslint . --fix",
-    "start": "tsc --watch",
+    "start": "node ./dist/server.js",
     "prettier:check": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "prettier:fix": "prettier --write .",
     "lint-prettier": "npm run lint:check && npm run prettier:check",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:prod": "node ./dist/server.js"
+    "start:prod": "node ./dist/server.js",
+    "start:watch": "tsc --watch"
   },
   "author": "MD Nazmul Hasan",
   "license": "ISC",
