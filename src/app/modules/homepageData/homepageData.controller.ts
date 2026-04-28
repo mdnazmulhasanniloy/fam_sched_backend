@@ -14,7 +14,7 @@ const calendarData = catchAsync(async (req: Request, res: Response) => {
   });
 });
 const WorkerCalendarData = catchAsync(async (req: Request, res: Response) => {
-  req.query.user = req?.user?.userId;
+  req.query.user = req?.user?.userId; 
   const result = await homepageDataService.WorkerCalendarData(req.query);
   sendResponse(res, {
     statusCode: 201,

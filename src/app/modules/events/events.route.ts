@@ -8,23 +8,22 @@ const router = Router();
 
 router.post(
   '/',
-  auth(USER_ROLE.user),
-  requireSubscription(),
+  auth(USER_ROLE.user, USER_ROLE.worker),
+  // requireSubscription(),
   eventsController.createEvents,
 );
 router.patch(
   '/:id',
-  auth(USER_ROLE.user),
-  requireSubscription(),
+  auth(USER_ROLE.user, USER_ROLE.worker),
+  // requireSubscription(),
   eventsController.updateEvents,
 );
 router.delete(
   '/:id',
-  auth(USER_ROLE.user),
-  requireSubscription(),
+  auth(USER_ROLE.user, USER_ROLE.worker),
+  // requireSubscription(),
   eventsController.deleteEvents,
 );
-
 
 router.get('/:id', eventsController.getEventsById);
 router.get('/', eventsController.getAllEvents);
