@@ -2,10 +2,12 @@ import os
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
+from app.services.validation import fix_past_dates
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-today = datetime.now().strftime("%Y-%m-%d %A")  # e.g. "2026-04-28 Tuesday"
+today = datetime.now(timezone.utc).strftime("%Y-%m-%d %A")  # e.g. "2026-04-28 Tuesday"
+print(f"DEBUG today = {today}")
 
 load_dotenv()
 
@@ -65,15 +67,19 @@ EVENT_SCHEMA = {
     }
 }
 
-SYSTEM_PROMPT = f"""
+
+def get_system_prompt() -> str:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d %A")
+    return f"""
 You are a smart calendar assistant. 
 The user will describe what they want scheduled.
-Today is {today}. Use this as the base for all relative dates (e.g. "tomorrow", "next week", "in 3 days" etc.).
+Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
 You must extract ALL events from the description and return them in structured format.
 
 Rules:
 - If no specific date is mentioned, use today's date as a base.
 - Default event duration is 1 hour unless stated.
+- You MUST NOT generate any date in the past.
 - Pick sensible reminders (e.g. 10m, 1h, 1d before).
 - If the user says recurring, set the recurring field accordingly.
 - isAssignMe is always true unless stated otherwise.
@@ -83,20 +89,63 @@ Rules:
 
 
 def parse_events_from_description(description: str) -> list[dict]:
-    """
-    Takes a plain text description and returns a list of event dicts.
-    """
+    system_prompt = get_system_prompt()  # ✅ fresh date every call
+
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},  # ✅ use local var
             {"role": "user",   "content": description}
         ],
         tools=[EVENT_SCHEMA],
         tool_choice={"type": "function", "function": {"name": "create_events"}}
     )
 
-    # Extract the function call arguments
     tool_call = response.choices[0].message.tool_calls[0]
     arguments = json.loads(tool_call.function.arguments)
-    return arguments["events"]
+    events = fix_past_dates(arguments["events"])
+    return events
+
+
+# SYSTEM_PROMPT = f"""
+# You are a smart calendar assistant. 
+# The user will describe what they want scheduled.
+# Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
+# You must extract ALL events from the description and return them in structured format.
+
+# Rules:
+# - If no specific date is mentioned, use today's date as a base.
+# - Default event duration is 1 hour unless stated.
+# - You MUST NOT generate any date in the past.
+# - Pick sensible reminders (e.g. 10m, 1h, 1d before).
+# - If the user says recurring, set the recurring field accordingly.
+# - isAssignMe is always true unless stated otherwise.
+# - The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
+# - Return multiple events if the description implies multiple.
+# """
+
+
+# def parse_events_from_description(description: str) -> list[dict]:
+#     """
+#     Takes a plain text description and returns a list of event dicts.
+#     """
+
+#     today = datetime.now().strftime("%Y-%m-%d %A")
+#     print(f"DEBUG today = {today}")
+#     prompt = SYSTEM_PROMPT.format(today=today)
+
+#     response = client.chat.completions.create(
+#         model="gpt-4o",
+#         messages=[
+#             {"role": "system", "content": SYSTEM_PROMPT},
+#             {"role": "user",   "content": description}
+#         ],
+#         tools=[EVENT_SCHEMA],
+#         tool_choice={"type": "function", "function": {"name": "create_events"}}
+#     )
+
+#     # Extract the function call arguments
+#     tool_call = response.choices[0].message.tool_calls[0]
+#     arguments = json.loads(tool_call.function.arguments)
+#     events = fix_past_dates(arguments["events"])
+#     return events
