@@ -2,6 +2,7 @@ import Events from '../events/events.models';
 import { Types } from 'mongoose';
 import now from '../../utils/now';
 import moment from 'moment';
+import { start } from 'repl';
 
 // const calendarData = async (query: Record<string, any>) => {
 //   const { user, month, year } = query;
@@ -266,9 +267,12 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
           .endOf('month')
       : moment().endOf('month');
 
+  // console.log({ startOfMonth, endOfMonth });
+
   const events = await Events.find({
     isDeleted: false,
     $or: [
+      { user: new Types.ObjectId(user) },
       { assignTo: new Types.ObjectId(user) },
       { includeInSchedule: new Types.ObjectId(user) },
     ],

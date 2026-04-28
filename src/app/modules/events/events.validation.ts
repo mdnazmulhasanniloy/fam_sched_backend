@@ -5,7 +5,7 @@ const objectIdSchema = z.string().refine(val => Types.ObjectId.isValid(val), {
   message: 'Invalid ObjectId format',
 });
 
-const recurringEnum = z.enum(['daily', 'weekly', 'monthly', 'cancel']);
+const recurringEnum = z.enum(['daily', 'weekly', 'monthly', 'none']);
 
 const schema = z.object({
   user: objectIdSchema.optional(),

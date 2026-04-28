@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { createServer, Server } from 'http';
 import mongoose from 'mongoose';
 import app from './app';
@@ -7,7 +6,7 @@ import { defaultTask } from './app/utils/defaultTask';
 import colors from 'colors';
 import initializeSocketIO from './app/socket';
 // import './app/job/croneJob';
-import './app/job/event.worker';
+// import './app/job/event.worker';
 import './app/job/notification.worker';
 
 let server: Server;

@@ -21,7 +21,7 @@ export const calculateReminderTime = (
 export const generateRecurringDates = (
   start: Date,
   end: Date,
-  recurring: 'daily' | 'weekly' | 'monthly' | 'off',
+  recurring: 'daily' | 'weekly' | 'monthly' | 'none',
 ) => {
   const dates: Date[] = [];
   let current = moment(start);
