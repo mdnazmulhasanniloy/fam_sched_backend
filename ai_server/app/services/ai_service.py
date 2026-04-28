@@ -66,7 +66,7 @@ EVENT_SCHEMA = {
 SYSTEM_PROMPT = """
 You are a smart calendar assistant. 
 The user will describe what they want scheduled.
-Today is {today}. Use this as the base for all relative dates (e.g. "tomorrow", "next week", "in 3 days" etc.).
+Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
 You must extract ALL events from the description and return them in structured format.
 
 Rules:
@@ -86,6 +86,7 @@ def parse_events_from_description(description: str) -> list[dict]:
     """
 
     today = datetime.now().strftime("%Y-%m-%d %A")
+    print(f"DEBUG today = {today}")
     prompt = SYSTEM_PROMPT.format(today=today)
 
     response = client.chat.completions.create(
