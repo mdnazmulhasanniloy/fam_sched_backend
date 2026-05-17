@@ -20,6 +20,10 @@ const eventsSchema = new Schema<IEvents>(
       type: Date,
       required: true,
     },
+    location: {
+      type: String,
+      default: null,
+    },
     assignTo: {
       type: Types.ObjectId,
       ref: 'User',
@@ -38,7 +42,7 @@ const eventsSchema = new Schema<IEvents>(
       },
       unit: {
         type: String,
-        enum: ['m', 'h', 'd', 'w'],
+        enum: ['s', 'm', 'h', 'd', 'w'],
       },
     },
     remainder2: {
@@ -48,7 +52,7 @@ const eventsSchema = new Schema<IEvents>(
       },
       unit: {
         type: String,
-        enum: ['m', 'h', 'd', 'w'],
+        enum: ['s', 'm', 'h', 'd', 'w'],
       },
     },
     remainder3: {
@@ -58,7 +62,7 @@ const eventsSchema = new Schema<IEvents>(
       },
       unit: {
         type: String,
-        enum: ['m', 'h', 'd', 'w'],
+        enum: ['s', 'm', 'h', 'd', 'w'],
       },
     },
 

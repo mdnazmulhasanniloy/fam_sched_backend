@@ -34,9 +34,21 @@ const googleLogin = z.object({
   }),
   role: z.enum([...Role] as [string, ...string[]]).default(USER_ROLE.user),
 });
+const appleLogin = z.object({
+  body: z.object({
+    fcmToken: z.string({
+      required_error: 'Fcm token is required!',
+    }),
+    token: z.string({
+      required_error: 'Token is Required',
+    }),
+  }),
+  role: z.enum([...Role] as [string, ...string[]]).default(USER_ROLE.user),
+});
 
 export const authValidation = {
   refreshTokenValidationSchema,
   loginZodValidationSchema,
   googleLogin,
+  appleLogin,
 };
