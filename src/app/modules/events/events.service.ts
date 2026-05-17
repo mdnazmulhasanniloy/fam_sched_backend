@@ -7,20 +7,23 @@ import QueryBuilder from '../../core/builder/QueryBuilder';
 import moment from 'moment';
 import { calculateReminderTime, generateRecurringDates } from './events.utils';
 
+
+
 const createEvents = async (payload: IEvents) => {
   const session = await Events.startSession();
   session.startTransaction();
 
   try {
-    // 1️⃣ Convert dates to UTC
+    // ✅ 1. Convert to UTC BEFORE saving
     if (payload.startEvent) {
       payload.startEvent = moment(payload.startEvent).utc().toDate();
     }
+
     if (payload.endEvent) {
       payload.endEvent = moment(payload.endEvent).utc().toDate();
     }
 
-    // 2️⃣ Create event
+    // ✅ 2. Create event
     const result = await Events.create([payload], { session });
     const event = result[0];
 
@@ -28,33 +31,47 @@ const createEvents = async (payload: IEvents) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Failed to create events');
     }
 
-    // 3️⃣ Collect all target users (unique)
+    // ✅ 3. Collect users
     const usersToNotify = new Set<string>();
+
     if (event.assignTo) usersToNotify.add(event.assignTo.toString());
-    if (event.isAssignMe && event.user)
+    if (event.isAssignMe && event.user) {
       usersToNotify.add(event.user.toString());
+    }
+
     if (event.includeInSchedule?.length) {
       event.includeInSchedule.forEach(u => usersToNotify.add(u.toString()));
     }
 
-    // 4️⃣ Generate recurring dates
+    // ❗ Safety check
+    if (!usersToNotify.size) {
+      console.warn('⚠️ No users to notify');
+    }
+
+    // ✅ 4. Generate dates (UTC)
     const dates = generateRecurringDates(
       event.startEvent!,
       event.endEvent!,
       event.recurring,
     );
+
     const reminders = [event.remainder1, event.remainder2, event.remainder3];
+
     const allJobIds: any[] = [];
 
-    // 5️⃣ Schedule jobs
+    const nowUTC = moment.utc().toDate();
+
+    // ✅ 5. Schedule jobs
     for (const date of dates) {
       for (const r of reminders) {
         if (!r?.value || !r?.unit) continue;
 
         const reminderTime = calculateReminderTime(date, r.value, r.unit);
-        if (!reminderTime || reminderTime < new Date()) continue;
 
-        const delay = reminderTime.getTime() - Date.now();
+        if (!reminderTime || reminderTime < nowUTC) continue;
+
+        // ✅ Safe delay
+        const delay = Math.max(0, reminderTime.getTime() - Date.now());
 
         for (const userId of usersToNotify) {
           const job = await eventQueue.add(
@@ -62,32 +79,34 @@ const createEvents = async (payload: IEvents) => {
             {
               eventId: event._id,
               userId,
-              title: `Recurring Reminder: ${event.title}`,
-              body: `You have a recurring event ${event.title}. Don't forget to follow your schedule.`,
+              title: `Reminder: ${event.title}`,
+              body: `You have an event: ${event.title}`,
             },
             { delay },
           );
+
           allJobIds.push(job.id);
         }
       }
     }
 
-    // 6️⃣ Save all jobIds in bulk
+    console.log('✅ Created jobs:', allJobIds);
+
+    // ✅ 6. Save jobIds
     if (allJobIds.length) {
       event.jobIds = allJobIds;
       await event.save({ session });
     }
 
-    // 7️⃣ Commit transaction
     await session.commitTransaction();
 
-    // 8️⃣ Redis cache cleanup
+    // ✅ 7. Clear cache
     try {
       await pubClient.del(`events:${event._id}`);
       const keys = await pubClient.keys('events:*');
       if (keys.length) await pubClient.del(keys);
     } catch (err) {
-      console.error('Redis cache invalidation error (createEvents):', err);
+      console.error('Redis cache error:', err);
     }
 
     return event;

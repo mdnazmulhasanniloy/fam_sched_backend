@@ -8,6 +8,11 @@ import { USER_ROLE } from '../user/user.constants';
 const router = Router();
 
 router.post(
+  '/apple-login',
+  validateRequest(authValidation.appleLogin),
+  authControllers.appleLogin,
+);
+router.post(
   '/google-login',
   validateRequest(authValidation.googleLogin),
   authControllers.googleLogin,
