@@ -9,6 +9,7 @@ export interface IEvents {
   user: ObjectId | IUser;
   title: string;
   startEvent: Date;
+  location: string;
   endEvent: Date;
   assignTo: ObjectId | IUser;
   includeInSchedule: ObjectId[] | IUser[];
