@@ -92,7 +92,7 @@ def parse_events_from_description(description: str) -> list[dict]:
     system_prompt = get_system_prompt()  # ✅ fresh date every call
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},  # ✅ use local var
             {"role": "user",   "content": description}
