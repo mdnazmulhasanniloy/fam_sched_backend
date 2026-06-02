@@ -12,6 +12,7 @@ import colors from 'colors';
 import initializeSocketIO from './app/socket';
 import './app/job/event.worker';
 import './app/job/notification.worker';
+import 'dotenv/config';
 
 let server: Server;
 const socketServer = createServer(app);
