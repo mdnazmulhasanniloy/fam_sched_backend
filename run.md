@@ -31,6 +31,5 @@ docker-compose pull
 ## 4. Restart with the updated version
 
 ```sh
-docker-compose down
-docker-compose up -d
+docker-compose down && docker-compose up -d
 ```

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import catchAsync from '../../utils/catchAsync';
 import { eventsService } from './events.service';
-import sendResponse from '../../utils/sendResponse'; 
+import sendResponse from '../../utils/sendResponse';
 
 const createEvents = catchAsync(async (req: Request, res: Response) => {
   req.body.user = req?.user?.userId;
@@ -15,7 +15,7 @@ const createEvents = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllEvents = catchAsync(async (req: Request, res: Response) => {
-  const result = await eventsService.getAllEvents(req.query);
+  const result = await eventsService.getAllEvents(req.query, req.user.userId);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -25,7 +25,10 @@ const getAllEvents = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getEventsById = catchAsync(async (req: Request, res: Response) => {
-  const result = await eventsService.getEventsById(req.params.id);
+  const result = await eventsService.getEventsById(
+    req.params.id,
+    req.user.userId,
+  );
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -33,6 +36,7 @@ const getEventsById = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
 const updateEvents = catchAsync(async (req: Request, res: Response) => {
   const result = await eventsService.updateEvents(req.params.id, req.body);
   sendResponse(res, {

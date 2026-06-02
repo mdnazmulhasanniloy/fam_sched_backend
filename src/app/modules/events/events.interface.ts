@@ -18,10 +18,12 @@ export interface IEvents {
   remainder3: IRemainder;
   recurring: 'daily' | 'weekly' | 'monthly' | 'none';
   note: string;
+  timezone: string;
   jobIds: string[];
   notifyHistory: Date[];
   isAssignMe: boolean;
   isDeleted: boolean;
+  isCompleted: boolean;
 }
 
 export type IEventsModules = Model<IEvents, Record<string, unknown>>;

@@ -4,10 +4,13 @@ import Events from './events.models';
 import AppError from '../../error/AppError';
 import { eventQueue, pubClient } from '../../redis';
 import QueryBuilder from '../../core/builder/QueryBuilder';
-import moment from 'moment';
-import { calculateReminderTime, generateRecurringDates } from './events.utils';
-
-
+import moment from 'moment-timezone';
+import {
+  calculateReminderTime,
+  convertEventToUserTZ,
+  generateRecurringDates,
+} from './events.utils';
+import { User } from '../user/user.models';
 
 const createEvents = async (payload: IEvents) => {
   const session = await Events.startSession();
@@ -15,12 +18,27 @@ const createEvents = async (payload: IEvents) => {
 
   try {
     // ✅ 1. Convert to UTC BEFORE saving
+    payload.isCompleted = false;
     if (payload.startEvent) {
-      payload.startEvent = moment(payload.startEvent).utc().toDate();
+      payload.startEvent = moment
+        .tz(payload.startEvent, payload.timezone)
+        .utc()
+        .toDate();
+      // payload.startEvent = moment(payload.startEvent).utc().toDate();
     }
 
     if (payload.endEvent) {
-      payload.endEvent = moment(payload.endEvent).utc().toDate();
+      payload.endEvent = moment
+        .tz(payload.endEvent, payload.timezone)
+        .utc()
+        .toDate();
+      // payload.endEvent = moment(payload.endEvent).utc().toDate();
+    }
+
+    if (payload.startEvent && payload.endEvent) {
+      if (moment(payload.endEvent).isBefore(moment(payload.startEvent))) {
+        throw new AppError(400, 'End date must be after start date');
+      }
     }
 
     // ✅ 2. Create event
@@ -53,6 +71,7 @@ const createEvents = async (payload: IEvents) => {
       event.startEvent!,
       event.endEvent!,
       event.recurring,
+      event.timezone,
     );
 
     const reminders = [event.remainder1, event.remainder2, event.remainder3];
@@ -66,7 +85,12 @@ const createEvents = async (payload: IEvents) => {
       for (const r of reminders) {
         if (!r?.value || !r?.unit) continue;
 
-        const reminderTime = calculateReminderTime(date, r.value, r.unit);
+        const reminderTime = calculateReminderTime(
+          date,
+          r.value,
+          r.unit,
+          event.timezone,
+        );
 
         if (!reminderTime || reminderTime < nowUTC) continue;
 
@@ -119,7 +143,7 @@ const createEvents = async (payload: IEvents) => {
   }
 };
 
-const getAllEvents = async (query: Record<string, any>) => {
+const getAllEvents = async (query: Record<string, any>, userId: string) => {
   try {
     const cacheKey = 'events:' + JSON.stringify(query);
     // 1. Check cache
@@ -137,10 +161,27 @@ const getAllEvents = async (query: Record<string, any>) => {
       .sort()
       .fields();
 
-    const data = await eventsModel.modelQuery;
-    const meta = await eventsModel.countTotal();
+    const [data, meta, user] = await Promise.all([
+      eventsModel.modelQuery,
+      eventsModel.countTotal(),
+      User.findById(userId).select('timezone'),
+    ]);
 
-    const response = { data, meta };
+    // const meta = await eventsModel.countTotal();
+    if (!user?.timezone && data?.length === 0) {
+      return {
+        data,
+        meta,
+      };
+    }
+
+    const convertedData = data?.map((event: any) =>
+      convertEventToUserTZ(
+        event.toObject ? event.toObject() : event,
+        user!.timezone,
+      ),
+    );
+    const response = { data: convertedData, meta };
 
     // 3. Store in cache (30s TTL)
     await pubClient.set(cacheKey, JSON.stringify(response), { EX: 30 });
@@ -168,9 +209,9 @@ const getAllEvents = async (query: Record<string, any>) => {
   }
 };
 
-const getEventsById = async (id: string) => {
+const getEventsById = async (id: string, userId: string) => {
   try {
-    const cacheKey = 'events:' + id;
+    const cacheKey = 'events:' + id + ':' + userId;
 
     // 1. Check cache
     const cachedData = await pubClient.get(cacheKey);
@@ -179,11 +220,16 @@ const getEventsById = async (id: string) => {
     }
 
     // 2. Fetch from DB
-    const result = await Events.findById(id);
-    if (!result || result?.isDeleted) {
+
+    const [event, user] = await Promise.all([
+      Events.findById(id),
+      // Assuming you have a User model to fetch user details
+      User.findById(userId).select('timezone'),
+    ]);
+    if (!event || event?.isDeleted) {
       throw new Error('Events not found!');
     }
-
+    const result = convertEventToUserTZ(event.toObject(), user!.timezone);
     // 3. Store in cache (e.g., 30s TTL)
     await pubClient.set(cacheKey, JSON.stringify(result), { EX: 30 });
 
@@ -205,11 +251,25 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
   try {
     // Convert date to UTC
     if (payload.startEvent) {
-      payload.startEvent = moment(payload.startEvent).utc().toDate();
+      payload.startEvent = moment
+        .tz(payload.startEvent, payload.timezone as string)
+        .utc()
+        .toDate();
+      // payload.startEvent = moment(payload.startEvent).utc().toDate();
     }
 
     if (payload.endEvent) {
-      payload.endEvent = moment(payload.endEvent).utc().toDate();
+      payload.endEvent = moment
+        .tz(payload.endEvent, payload.timezone as string)
+        .utc()
+        .toDate();
+      // payload.endEvent = moment(payload.endEvent).utc().toDate();
+    }
+
+    if (payload.startEvent && payload.endEvent) {
+      if (moment(payload.endEvent).isBefore(moment(payload.startEvent))) {
+        throw new AppError(400, 'End date must be after start date');
+      }
     }
 
     // =============== 1️⃣ Fetch Existing Event ===============
@@ -265,6 +325,7 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
       updatedEvent.startEvent!,
       updatedEvent.endEvent!,
       updatedEvent.recurring,
+      updatedEvent.timezone,
     );
 
     const reminders = [
@@ -279,7 +340,12 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
       for (const r of reminders) {
         if (!r?.value || !r?.unit) continue;
 
-        const reminderTime = calculateReminderTime(date, r.value, r.unit);
+        const reminderTime = calculateReminderTime(
+          date,
+          r.value,
+          r.unit,
+          updatedEvent?.timezone,
+        );
         if (!reminderTime || reminderTime < new Date()) continue;
 
         const delay = reminderTime.getTime() - Date.now();

@@ -20,6 +20,10 @@ const eventsSchema = new Schema<IEvents>(
       type: Date,
       required: true,
     },
+    timezone: {
+      type: String,
+      default: 'UTC',
+    },
     location: {
       type: String,
       default: null,
@@ -55,6 +59,7 @@ const eventsSchema = new Schema<IEvents>(
         enum: ['s', 'm', 'h', 'd', 'w'],
       },
     },
+
     remainder3: {
       value: {
         type: Number,
@@ -64,6 +69,10 @@ const eventsSchema = new Schema<IEvents>(
         type: String,
         enum: ['s', 'm', 'h', 'd', 'w'],
       },
+    },
+    isCompleted: {
+      type: Boolean,
+      default: false,
     },
 
     recurring: {

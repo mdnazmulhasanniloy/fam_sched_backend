@@ -85,7 +85,10 @@ const userSchema: Schema<IUser> = new Schema(
       enum: ['active', 'blocked'],
       default: 'active',
     },
-
+    timezone: {
+      type: String,
+      default: 'UTC',
+    },
     expireAt: {
       type: Date,
       default: () => {

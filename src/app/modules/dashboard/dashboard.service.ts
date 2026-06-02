@@ -63,8 +63,8 @@ const dashboardChart = async (query: Record<string, any>) => {
       $match: {
         status: PAYMENT_STATUS.paid,
         createdAt: {
-          $gte: moment().year(incomeYear).startOf('year').toDate(),
-          $lte: moment().year(incomeYear).endOf('year').toDate(),
+          $gte: moment().utc().year(incomeYear).startOf('year').toDate(),
+          $lte: moment().utc().year(incomeYear).endOf('year').toDate(),
         },
       },
     },
@@ -121,7 +121,7 @@ const dashboardChart = async (query: Record<string, any>) => {
 };
 
 const getAllTransitions = async (query: Record<string, any>) => {
-  const today = moment().startOf('day');
+  const today = moment().utc().startOf('day');
 
   const { filters, pagination } = await pickQuery(query);
   const { searchTerm, ...filtersData } = filters;

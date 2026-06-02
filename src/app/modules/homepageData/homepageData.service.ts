@@ -1,25 +1,17 @@
 import Events from '../events/events.models';
 import { Types } from 'mongoose';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 const calendarData = async (query: Record<string, any>) => {
-  const { user, month, year } = query;
+  const { user, month, year, timezone = 'UTC' } = query;
 
-  const startOfMonth =
-    year && month
-      ? moment()
-          .year(year)
-          .month(month - 1)
-          .startOf('month')
-      : moment().startOf('month');
+  const startOfMonth = moment
+    .tz({ year, month: month - 1 }, timezone)
+    .startOf('month');
 
-  const endOfMonth =
-    year && month
-      ? moment()
-          .year(year)
-          .month(month - 1)
-          .endOf('month')
-      : moment().endOf('month');
+  const endOfMonth = moment
+    .tz({ year, month: month - 1 }, timezone)
+    .endOf('month');
 
   // 1️⃣ MongoDB থেকে raw events
   const events = await Events.find({
@@ -28,8 +20,8 @@ const calendarData = async (query: Record<string, any>) => {
       { user: new Types.ObjectId(user) },
       { includeInSchedule: new Types.ObjectId(user) },
     ],
-    startEvent: { $lte: endOfMonth.toDate() },
-    endEvent: { $gte: startOfMonth.toDate() },
+    startEvent: { $lte: endOfMonth.clone().utc().toDate() },
+    endEvent: { $gte: startOfMonth.clone().utc().toDate() },
   }).lean();
 
   // 2️⃣ Calendar map
@@ -37,14 +29,16 @@ const calendarData = async (query: Record<string, any>) => {
 
   // 3️⃣ Recurring expand logic
   for (const event of events) {
-    let current = moment(event.startEvent);
-
-    while (current.isSameOrBefore(event.endEvent)) {
+    let current = moment.utc(event.startEvent).tz(timezone);
+    const end = moment.utc(event.endEvent).tz(timezone);
+    while (current.isSameOrBefore(end)) {
       if (
         current.isSameOrAfter(startOfMonth) &&
         current.isSameOrBefore(endOfMonth)
       ) {
-        const dateKey = current.format('YYYY-MM-DD');
+        const dateKey = query?.userTz
+          ? moment.utc(current).tz(query.userTz).format('YYYY-MM-DD')
+          : current.format('YYYY-MM-DD');
 
         if (!calendarMap[dateKey]) {
           calendarMap[dateKey] = [];
@@ -53,8 +47,8 @@ const calendarData = async (query: Record<string, any>) => {
         calendarMap[dateKey].push({
           _id: event._id,
           title: event.title,
-          startEvent: event.startEvent,
-          endEvent: event.endEvent,
+          startEvent: moment.utc(event.startEvent).tz(timezone).format(),
+          endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
           assignTo: event.assignTo,
           remainder1: event.remainder1,
@@ -90,23 +84,17 @@ const calendarData = async (query: Record<string, any>) => {
 };
 
 const WorkerCalendarData = async (query: Record<string, any>) => {
-  const { user, month, year } = query;
+  const { user, month, year, timezone = 'UTC' } = query;
 
   const startOfMonth =
     year && month
-      ? moment()
-          .year(year)
-          .month(month - 1)
-          .startOf('month')
-      : moment().startOf('month');
+      ? moment.tz({ year, month: month - 1 }, timezone).startOf('month')
+      : moment.tz(timezone).startOf('month');
 
   const endOfMonth =
     year && month
-      ? moment()
-          .year(year)
-          .month(month - 1)
-          .endOf('month')
-      : moment().endOf('month');
+      ? moment.tz({ year, month: month - 1 }, timezone).endOf('month')
+      : moment.tz(timezone).endOf('month');
 
   const userId = new Types.ObjectId(user);
 
@@ -117,21 +105,24 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
       { assignTo: userId },
       { includeInSchedule: { $in: [userId] } },
     ],
-    startEvent: { $lte: endOfMonth.toDate() },
-    endEvent: { $gte: startOfMonth.toDate() },
+    startEvent: { $lte: endOfMonth.clone().utc().toDate() },
+    endEvent: { $gte: startOfMonth.clone().utc().toDate() },
   }).lean();
 
   const calendarMap: Record<string, any[]> = {};
 
   for (const event of events) {
-    let current = moment(event.startEvent);
+    let current = moment.utc(event.startEvent).tz(timezone);
+    const end = moment.utc(event.endEvent).tz(timezone);
 
-    while (current.isSameOrBefore(event.endEvent)) {
+    while (current.isSameOrBefore(end)) {
       if (
         current.isSameOrAfter(startOfMonth) &&
         current.isSameOrBefore(endOfMonth)
       ) {
-        const dateKey = current.format('YYYY-MM-DD');
+        const dateKey = query?.userTz
+          ? moment.utc(current).tz(query.userTz).format('YYYY-MM-DD')
+          : current.format('YYYY-MM-DD');
 
         if (!calendarMap[dateKey]) {
           calendarMap[dateKey] = [];
@@ -140,8 +131,8 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
         calendarMap[dateKey].push({
           _id: event._id,
           title: event.title,
-          startEvent: event.startEvent,
-          endEvent: event.endEvent,
+          startEvent: moment.utc(event.startEvent).tz(timezone).format(),
+          endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
           assignTo: event.assignTo,
           remainder1: event.remainder1,

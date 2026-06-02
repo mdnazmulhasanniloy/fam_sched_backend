@@ -302,6 +302,7 @@ const generateNewToken = async (userId: string) => {
     accessToken,
   };
 };
+
 const googleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin

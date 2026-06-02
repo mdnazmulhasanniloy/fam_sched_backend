@@ -11,7 +11,7 @@ export interface IUser {
   password: string;
   notification: boolean;
   alert: string;
-
+  timezone: string;
   // profile Details
   gender: 'Male' | 'Female' | 'Others';
   dateOfBirth: string;

@@ -58,7 +58,7 @@ const updateContents = async (payload: Partial<IContents>) => {
         fieldName: field,
         oldValue,
         newValue,
-        updatedAt: moment().toDate(),
+        updatedAt: moment().utc().toDate(),
       });
     }
   });
