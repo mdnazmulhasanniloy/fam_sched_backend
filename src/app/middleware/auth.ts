@@ -9,10 +9,7 @@ import { User } from '../modules/user/user.models';
 const auth = (...userRoles: string[]) => {
   return catchAsync(async (req, res, next) => {
     // const [bearer, tokenValue] = req?.headers?.authorization?.split(' ');
-    // console.log({
-    //   bearer,
-    //   tokenValue,
-    // });
+     
     const token = req?.headers?.authorization?.split(' ')[1];
 
     if (!token) {

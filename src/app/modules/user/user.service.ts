@@ -1,6 +1,6 @@
-import fs from 'fs';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import fs from 'fs';
 import httpStatus from 'http-status';
 import AppError from '../../error/AppError';
 import { IUser } from './user.interface';
@@ -8,7 +8,6 @@ import { User } from './user.models';
 import bcrypt from 'bcrypt';
 import config from '../../config';
 import { pubClient } from '../../redis';
-import { uploadToS3 } from '../../utils/s3';
 import generateCryptoString from '../../utils/generateCryptoString';
 import { USER_ROLE } from './user.constants';
 import path from 'path';
@@ -147,6 +146,11 @@ const geUserById = async (id: string) => {
 };
 
 const updateUser = async (id: string, payload: Partial<IUser>) => {
+  // Clean timezone if provided - remove spaces
+  if (payload.timezone) {
+    payload.timezone = (payload.timezone as string).replace(/\s+/g, '');
+  }
+
   const user = await User.findByIdAndUpdate(id, payload, { new: true });
   if (!user) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User updating failed');
@@ -160,6 +164,12 @@ const updateUser = async (id: string, payload: Partial<IUser>) => {
     const keys = await pubClient.keys('users:*');
     if (keys.length > 0) {
       await pubClient.del(keys);
+    }
+
+    // Also clear events cache since user's timezone changed
+    const eventKeys = await pubClient.keys('events:*');
+    if (eventKeys.length > 0) {
+      await pubClient.del(eventKeys);
     }
   } catch (err) {
     console.error('Redis cache invalidation error (updateUser):', err);

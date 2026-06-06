@@ -72,8 +72,7 @@ const verifyOtp = async (token: string, otp: string | number) => {
 };
 
 const resendOtp = async (email: string) => {
-  const user = await User.findOne({ email });
-  console.log('🚀 ~ resendOtp ~ user:', user);
+  const user = await User.findOne({ email }); 
 
   if (!user) {
     throw new AppError(httpStatus.BAD_REQUEST, 'User not found');
@@ -182,8 +181,7 @@ const verifyLink = async (query: Record<string, any>) => {
       expireAt: null,
     },
     { new: true },
-  ).select('email _id username role name');
-  console.log(updateUser);
+  ).select('email _id username role name'); 
   return updateUser;
 };
 

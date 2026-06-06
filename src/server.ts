@@ -10,6 +10,7 @@ import config from './app/config';
 import { defaultTask } from './app/utils/defaultTask';
 import colors from 'colors';
 import initializeSocketIO from './app/socket';
+import { connectRedis } from './app/redis';
 import './app/job/event.worker';
 import './app/job/notification.worker';
 import 'dotenv/config';
@@ -19,11 +20,12 @@ const socketServer = createServer(app);
 
 async function main() {
   try {
+    await connectRedis();
     const io = await initializeSocketIO(socketServer);
 
     await mongoose.connect(config.database_url as string, {
       family: 4,
-      serverSelectionTimeoutMS: 10000, // fail faster for debugging
+      serverSelectionTimeoutMS: 10000,
     });
 
     console.log(colors.green.bold('✅ MongoDB connected successfully'));

@@ -39,9 +39,10 @@ export const calculateReminderTime = (
   };
 
   return moment
-    .tz(startDate, timezone) // 🔥 original timezone
+    .utc(startDate) // 👈 FIX
+    .tz(timezone) // convert to original TZ
     .subtract(value, unitMap[unit])
-    .utc() // convert back to UTC
+    .utc()
     .toDate();
 };
 
@@ -54,11 +55,11 @@ export const generateRecurringDates = (
 ) => {
   const dates: Date[] = [];
 
-  let current = moment.tz(start, timezone);
-  const endDate = moment.tz(end, timezone);
+  let current = moment.utc(start).tz(timezone);
+  const endDate = moment.utc(end).tz(timezone);
 
   while (current.isSameOrBefore(endDate)) {
-    dates.push(current.toDate());
+    dates.push(current.clone().utc().toDate());
 
     if (recurring === 'daily') current = current.add(1, 'day');
     else if (recurring === 'weekly') current = current.add(1, 'week');
@@ -74,9 +75,12 @@ export const convertToUserTZ = (date: Date, tz: string) => {
 };
 
 export const convertEventToUserTZ = (event: any, timezone: string) => {
+  // Clean timezone - remove spaces
+  const cleanTZ = (timezone || 'UTC').replace(/\s+/g, '');
+
   return {
     ...event,
-    startEvent: moment.utc(event.startEvent).tz(timezone).format(),
-    endEvent: moment.utc(event.endEvent).tz(timezone).format(),
+    startEvent: moment.utc(event.startEvent).tz(cleanTZ).format(),
+    endEvent: moment.utc(event.endEvent).tz(cleanTZ).format(),
   };
 };

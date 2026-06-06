@@ -12,8 +12,12 @@ new Worker(
 
     const event = await Events.findById(eventId);
 
-    const user = await User.findById(userId);
-    if (!user?.fcmToken && !user?.notification) {
+    const user = await User.findById(userId); 
+
+    if (!user?.fcmToken || !user?.notification) {
+      console.log(
+        'User not found or has no FCM token or notifications disabled',
+      );
       await notificationQueue.add('send_notification', {
         receiver: userId,
         message: title,
@@ -24,6 +28,8 @@ new Worker(
       });
       return;
     }
+
+     
 
     await sendSingleNotification(user.fcmToken, {
       title: title,

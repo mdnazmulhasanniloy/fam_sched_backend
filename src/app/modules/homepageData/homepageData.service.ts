@@ -1,10 +1,13 @@
 import Events from '../events/events.models';
 import { Types } from 'mongoose';
 import moment from 'moment-timezone';
+import { User } from '../user/user.models';
 
 const calendarData = async (query: Record<string, any>) => {
-  const { user, month, year, timezone = 'UTC' } = query;
-
+  const { user, month, year } = query;
+  const timezone = await User.findById(user)
+    .select('timezone')
+    .then(user => user?.timezone || 'UTC'); 
   const startOfMonth = moment
     .tz({ year, month: month - 1 }, timezone)
     .startOf('month');
@@ -29,6 +32,7 @@ const calendarData = async (query: Record<string, any>) => {
 
   // 3️⃣ Recurring expand logic
   for (const event of events) {
+    // eslint-disable-next-line prefer-const
     let current = moment.utc(event.startEvent).tz(timezone);
     const end = moment.utc(event.endEvent).tz(timezone);
     while (current.isSameOrBefore(end)) {
@@ -112,6 +116,7 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
   const calendarMap: Record<string, any[]> = {};
 
   for (const event of events) {
+    // eslint-disable-next-line prefer-const
     let current = moment.utc(event.startEvent).tz(timezone);
     const end = moment.utc(event.endEvent).tz(timezone);
 

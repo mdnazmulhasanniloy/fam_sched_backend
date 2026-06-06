@@ -16,16 +16,17 @@ type NotificationPayload = {
 export const sendSingleNotification = async (
   fcmToken: string,
   payload: NotificationPayload,
-) => {
+) => { 
   try {
     if (!fcmToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
     const { title, body, data, userId, save = true } = payload;
 
+    // eslint-disable-next-line @typescript-eslint/ban-types
     const dataPayload: { payload: string } | {} = data
       ? { payload: JSON.stringify(data?.id) }
       : {};
-    const nn = await firebaseAdmin.messaging().send({
+    await firebaseAdmin.messaging().send({
       token: fcmToken,
       notification: { title, body },
       data: dataPayload,

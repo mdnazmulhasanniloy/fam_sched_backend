@@ -17,8 +17,7 @@ export const verifyToken = (token: string, secret: string) => {
 
 export const isValidFcmToken = async (token: string) => {
   try {
-    console.log(token);
-    const notify = await firebaseAdmin.messaging().send({
+    await firebaseAdmin.messaging().send({
       token,
       notification: {
         title: 'Login Alert!',
@@ -26,10 +25,8 @@ export const isValidFcmToken = async (token: string) => {
       },
     });
 
-    console.log(notify);
     return true; // valid token
   } catch (err: any) {
-    console.log('🚀 ~ isValidFcmToken ~ err:', err);
     if (
       err.code === 'messaging/invalid-registration-token' ||
       err.code === 'messaging/registration-token-not-registered'

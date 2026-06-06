@@ -17,11 +17,15 @@ const createEvents = async (payload: IEvents) => {
   session.startTransaction();
 
   try {
+    // Clean timezone - remove spaces
+    payload.timezone = (payload.timezone || 'UTC').replace(/\s+/g, '');
+
     // ✅ 1. Convert to UTC BEFORE saving
     payload.isCompleted = false;
+    console.log('Original payload:', payload);
     if (payload.startEvent) {
       payload.startEvent = moment
-        .tz(payload.startEvent, payload.timezone)
+        .tz(payload.startEvent, payload.timezone || 'UTC')
         .utc()
         .toDate();
       // payload.startEvent = moment(payload.startEvent).utc().toDate();
@@ -29,7 +33,7 @@ const createEvents = async (payload: IEvents) => {
 
     if (payload.endEvent) {
       payload.endEvent = moment
-        .tz(payload.endEvent, payload.timezone)
+        .tz(payload.endEvent, payload.timezone || 'UTC')
         .utc()
         .toDate();
       // payload.endEvent = moment(payload.endEvent).utc().toDate();
@@ -71,7 +75,7 @@ const createEvents = async (payload: IEvents) => {
       event.startEvent!,
       event.endEvent!,
       event.recurring,
-      event.timezone,
+      event.timezone || 'UTC',
     );
 
     const reminders = [event.remainder1, event.remainder2, event.remainder3];
@@ -89,14 +93,13 @@ const createEvents = async (payload: IEvents) => {
           date,
           r.value,
           r.unit,
-          event.timezone,
+          event.timezone || 'UTC',
         );
 
         if (!reminderTime || reminderTime < nowUTC) continue;
 
         // ✅ Safe delay
         const delay = Math.max(0, reminderTime.getTime() - Date.now());
-
         for (const userId of usersToNotify) {
           const job = await eventQueue.add(
             'send_event_notification',
@@ -108,7 +111,6 @@ const createEvents = async (payload: IEvents) => {
             },
             { delay },
           );
-
           allJobIds.push(job.id);
         }
       }
@@ -167,8 +169,11 @@ const getAllEvents = async (query: Record<string, any>, userId: string) => {
       User.findById(userId).select('timezone'),
     ]);
 
+    // Default to user's timezone, or UTC if not set
+    const userTimezone = (user?.timezone || 'UTC').replace(/\s+/g, '');
+
     // const meta = await eventsModel.countTotal();
-    if (!user?.timezone && data?.length === 0) {
+    if (!userTimezone && data?.length === 0) {
       return {
         data,
         meta,
@@ -178,7 +183,7 @@ const getAllEvents = async (query: Record<string, any>, userId: string) => {
     const convertedData = data?.map((event: any) =>
       convertEventToUserTZ(
         event.toObject ? event.toObject() : event,
-        user!.timezone,
+        userTimezone,
       ),
     );
     const response = { data: convertedData, meta };
@@ -249,10 +254,15 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
   session.startTransaction();
 
   try {
+    // Clean timezone - remove spaces
+    if (payload.timezone) {
+      payload.timezone = (payload.timezone as string).replace(/\s+/g, '');
+    }
+
     // Convert date to UTC
     if (payload.startEvent) {
       payload.startEvent = moment
-        .tz(payload.startEvent, payload.timezone as string)
+        .tz(payload.startEvent, (payload.timezone as string) || 'UTC')
         .utc()
         .toDate();
       // payload.startEvent = moment(payload.startEvent).utc().toDate();
@@ -260,7 +270,7 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
 
     if (payload.endEvent) {
       payload.endEvent = moment
-        .tz(payload.endEvent, payload.timezone as string)
+        .tz(payload.endEvent, (payload.timezone as string) || 'UTC')
         .utc()
         .toDate();
       // payload.endEvent = moment(payload.endEvent).utc().toDate();

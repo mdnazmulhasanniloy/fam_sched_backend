@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FilterQuery, Query } from 'mongoose';
@@ -41,6 +42,7 @@ class QueryBuilder<T> {
   }
   //rated base filter
 
+  // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
   ratedFilter<K extends keyof T>(field: string, range: Number) {
     if (range) {
       const filter = {
@@ -126,7 +128,7 @@ class QueryBuilder<T> {
             });
           } else if (value.includes('!')) {
             const [, v] = value.split('!');
-            console.log(v);
+        
             this.modelQuery = this.modelQuery.find({
               [key]: { $ne: v },
             });

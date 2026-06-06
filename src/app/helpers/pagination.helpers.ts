@@ -1,5 +1,3 @@
-import { SortOrder } from 'mongoose';
-
 type IOptions = {
   page?: number;
   limit?: number;
@@ -24,6 +22,24 @@ const calculatePagination = (options: IOptions): IOptionResult => {
     limit,
     skip,
     sort,
+  };
+};
+
+// ✅ ADD THIS (missing function)
+export const generatePaginationMetadata = ({
+  total,
+  page,
+  limit,
+}: {
+  total: number;
+  page: number;
+  limit: number;
+}) => {
+  return {
+    page,
+    limit,
+    total,
+    totalPage: Math.ceil(total / limit),
   };
 };
 

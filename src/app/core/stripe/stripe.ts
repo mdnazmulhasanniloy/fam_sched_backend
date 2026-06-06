@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Stripe as StripeType } from 'stripe';
 import config from '../../config';
 interface IPaymentItems {
@@ -37,8 +38,7 @@ class StripeServices<T> {
     returnUrl: string,
     refreshUrl: string,
     accountId: string,
-  ) {
-    console.log({ returnUrl, refreshUrl, accountId });
+  ) { 
     try {
       const accountLink = await this.stripe().accountLinks.create({
         account: accountId,
@@ -81,8 +81,7 @@ class StripeServices<T> {
         0,
       );
 
-      if (availableBalance < amount) {
-        console.log('Insufficient funds to cover the transfer.');
+      if (availableBalance < amount) { 
         throw new Error('Insufficient funds to cover the transfer.');
       }
 
@@ -144,7 +143,7 @@ class StripeServices<T> {
     product: IPaymentItems[],
     success_url: string,
     cancel_url: string,
-    customer: string = '', // Optional: customer ID for Stripe
+    customer: string = '', // Optional: customer ID for Stripe 
     currency: string = 'usd',
     payment_method_types: Array<'card' | 'paypal' | 'ideal'> = ['card'],
   ) {

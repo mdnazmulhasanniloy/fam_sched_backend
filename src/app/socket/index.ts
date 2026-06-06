@@ -1,12 +1,12 @@
-const { Server } = require('socket.io');
+import { Server } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { socketAuthMiddleware } from './middleware/auth.socket';
 import { Socket } from 'socket.io';
-import { connectRedis, pubClient, subClient } from '../redis';
+import { pubClient, subClient } from '../redis';
 
 const initializeSocketIO = async (server: HttpServer) => {
-  await connectRedis();
+  // await connectRedis();
 
   const io = new Server(server, {
     adapter: createAdapter(pubClient, subClient),

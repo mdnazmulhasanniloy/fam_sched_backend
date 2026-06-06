@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
 import httpStatus from 'http-status';
 import AppError from '../../error/AppError';
@@ -307,8 +308,7 @@ const googleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin
       .auth()
-      .verifyIdToken(payload?.token);
-    console.log(JSON.stringify(decodedToken));
+      .verifyIdToken(payload?.token); 
     if (!decodedToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
 
@@ -468,8 +468,7 @@ const appleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin
       .auth()
-      .verifyIdToken(payload?.token);
-    console.log(JSON.stringify(decodedToken));
+      .verifyIdToken(payload?.token); 
     if (!decodedToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
 
