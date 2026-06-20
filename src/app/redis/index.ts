@@ -3,16 +3,22 @@ import colors from 'colors';
 import { Queue } from 'bullmq';
 import config from '../config';
 
-const redisHost = config.redis_host || 'fam_sched_redis';
+const redisHost = config.redis_host || 'project_format_redis';
 const redisPort = parseInt(config.redis_port || '6379');
 const redisUrl = `redis://${redisHost}:${redisPort}`;
 
-const pubClient = createClient({ url: redisUrl });
-const subClient = pubClient.duplicate();
+const pubClient = createClient({
+  url: redisUrl,
+  password: config.redis_password as string,
+});
+const subClient = pubClient.duplicate({
+  password: config.redis_password as string,
+});
 
 const connection = {
   host: redisHost,
   port: redisPort,
+  password: config.redis_password as string,
 };
 
 const connectRedis = async () => {

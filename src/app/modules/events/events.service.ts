@@ -216,6 +216,10 @@ const getAllEvents = async (query: Record<string, any>, userId: string) => {
 
 const getEventsById = async (id: string, userId: string) => {
   try {
+    console.log({
+      id,
+      userId,
+    });
     const cacheKey = 'events:' + id + ':' + userId;
 
     // 1. Check cache

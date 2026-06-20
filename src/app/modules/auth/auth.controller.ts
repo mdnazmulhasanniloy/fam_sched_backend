@@ -3,8 +3,7 @@ import { Request, Response } from 'express';
 import { authServices } from './auth.service';
 import sendResponse from '../../utils/sendResponse';
 import httpStatus from 'http-status';
-import config from '../../config';
-import { User } from '../user/user.models';
+import config from '../../config'; 
 
 // login
 const login = catchAsync(async (req: Request, res: Response) => {
