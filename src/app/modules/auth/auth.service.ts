@@ -43,7 +43,7 @@ const login = async (payload: TLogin, req: Request) => {
     throw new AppError(httpStatus.FORBIDDEN, 'User account is not verified');
   }
 
-  if (!(await isValidFcmToken(payload?.fcmToken)))
+  if (payload?.fcmToken && !(await isValidFcmToken(payload?.fcmToken)))
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
 
   const jwtPayload: { userId: string; role: string } = {
@@ -308,7 +308,7 @@ const googleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin
       .auth()
-      .verifyIdToken(payload?.token); 
+      .verifyIdToken(payload?.token);
     if (!decodedToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
 
@@ -468,7 +468,7 @@ const appleLogin = async (payload: any, req: Request) => {
   try {
     const decodedToken: DecodedIdToken | null = await firebaseAdmin
       .auth()
-      .verifyIdToken(payload?.token); 
+      .verifyIdToken(payload?.token);
     if (!decodedToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
 
