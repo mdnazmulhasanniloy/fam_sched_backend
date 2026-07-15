@@ -4,7 +4,7 @@ WORKDIR /app
 
 # copy package.json + package-lock.json
 COPY ./package*.json ./
-
+COPY ./firebase.json ./
 # install dev dependencies
 RUN npm ci
 
@@ -20,6 +20,7 @@ WORKDIR /app
 
 # copy only production dependencies
 COPY package*.json ./
+COPY ./firebase.json ./
 RUN npm ci --only=production
 
 # copy build output from builder stage

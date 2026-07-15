@@ -27,6 +27,7 @@ export const isValidFcmToken = async (token: string) => {
 
     return true; // valid token
   } catch (err: any) {
+    console.log(err);
     if (
       err.code === 'messaging/invalid-registration-token' ||
       err.code === 'messaging/registration-token-not-registered'

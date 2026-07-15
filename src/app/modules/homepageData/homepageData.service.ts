@@ -7,7 +7,7 @@ const calendarData = async (query: Record<string, any>) => {
   const { user, month, year } = query;
   const timezone = await User.findById(user)
     .select('timezone')
-    .then(user => user?.timezone || 'UTC'); 
+    .then(user => user?.timezone || 'UTC');
   const startOfMonth = moment
     .tz({ year, month: month - 1 }, timezone)
     .startOf('month');
@@ -54,6 +54,7 @@ const calendarData = async (query: Record<string, any>) => {
           startEvent: moment.utc(event.startEvent).tz(timezone).format(),
           endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
+          timezone: event.timezone,
           assignTo: event.assignTo,
           remainder1: event.remainder1,
           remainder2: event.remainder2,
@@ -140,6 +141,7 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
           endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
           assignTo: event.assignTo,
+          timezone: event.timezone,
           remainder1: event.remainder1,
           remainder2: event.remainder2,
           remainder3: event.remainder3,

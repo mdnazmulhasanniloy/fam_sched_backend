@@ -8,6 +8,7 @@ import moment from 'moment-timezone';
 import {
   calculateReminderTime,
   convertEventToUserTZ,
+  formatReminderText,
   generateRecurringDates,
 } from './events.utils';
 import { User } from '../user/user.models';
@@ -95,8 +96,15 @@ const createEvents = async (payload: IEvents) => {
           r.unit,
           event.timezone || 'UTC',
         );
+        const eventTime = moment
+          .utc(event.startEvent)
+          .tz(event.timezone)
+          .format('hh:mm A');
 
         if (!reminderTime || reminderTime < nowUTC) continue;
+        const reminderText = formatReminderText(r.value, r.unit as any);
+        const title = `Upcoming Event`;
+        const body = `Your event "${event.title}" starts in ${reminderText} at ${eventTime}.`;
 
         // ✅ Safe delay
         const delay = Math.max(0, reminderTime.getTime() - Date.now());
@@ -104,10 +112,16 @@ const createEvents = async (payload: IEvents) => {
           const job = await eventQueue.add(
             'send_event_notification',
             {
+              // eventId: event._id,
+              // userId,
+              // title: `Reminder: ${event.title}`,
+              // body: `You have an event: ${event.title}`,
               eventId: event._id,
               userId,
-              title: `Reminder: ${event.title}`,
-              body: `You have an event: ${event.title}`,
+              title,
+              body,
+              reminderValue: r.value,
+              reminderUnit: r.unit,
             },
             { delay },
           );
@@ -361,6 +375,14 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
           updatedEvent?.timezone,
         );
         if (!reminderTime || reminderTime < new Date()) continue;
+        const reminderText = formatReminderText(r.value, r.unit as any);
+        const eventTime = moment
+          .utc(updatedEvent?.startEvent)
+          .tz(updatedEvent?.timezone)
+          .format('hh:mm A');
+
+        const title = `Upcoming Event`;
+        const body = `Your event "${updatedEvent?.title}" starts in ${reminderText} at ${eventTime}.`;
 
         const delay = reminderTime.getTime() - Date.now();
 
@@ -370,8 +392,8 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
             {
               eventId: updatedEvent._id,
               userId,
-              title: `Recurring Reminder: ${updatedEvent.title}`,
-              body: `You have a recurring event ${updatedEvent.title}. Don't forget to follow your schedule.`,
+              title,
+              body,
             },
             { delay },
           );

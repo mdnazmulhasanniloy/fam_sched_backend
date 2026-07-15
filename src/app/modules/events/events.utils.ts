@@ -84,3 +84,20 @@ export const convertEventToUserTZ = (event: any, timezone: string) => {
     endEvent: moment.utc(event.endEvent).tz(cleanTZ).format(),
   };
 };
+
+export const formatReminderText = (
+  value: number,
+  unit: 's' | 'm' | 'h' | 'd' | 'w',
+) => {
+  const unitMap: Record<string, string> = {
+    s: 'second',
+    m: 'minute',
+    h: 'hour',
+    d: 'day',
+    w: 'week',
+  };
+
+  const text = unitMap[unit] || unit;
+
+  return `${value} ${text}${value > 1 ? 's' : ''}`;
+};
