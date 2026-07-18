@@ -9,7 +9,12 @@ import {
   TResetPassword,
 } from './auth.interface';
 import config from '../../config';
-import { createToken, isValidFcmToken, verifyToken } from './auth.utils';
+import {
+  createToken,
+  isValidFcmToken,
+  sendLoginNotification,
+  verifyToken,
+} from './auth.utils';
 import { generateOtp } from '../../utils/otpGenerator';
 import moment from 'moment';
 import { sendEmail } from '../../utils/mailSender';
@@ -26,7 +31,6 @@ import firebaseAdmin from '../../utils/firebase';
 
 // Login
 const login = async (payload: TLogin, req: Request) => {
-  console.log(payload);
   const user: IUser | null = await User.isUserExist(payload?.email);
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
@@ -46,7 +50,9 @@ const login = async (payload: TLogin, req: Request) => {
 
   if (payload?.fcmToken && !(await isValidFcmToken(payload?.fcmToken)))
     throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
-
+  if (payload.fcmToken && payload.fcmToken !== '') {
+    await sendLoginNotification(payload.fcmToken);
+  }
   const jwtPayload: { userId: string; role: string } = {
     userId: user?._id?.toString() as string,
     role: user?.role,
