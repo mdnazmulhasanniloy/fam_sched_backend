@@ -1,15 +1,12 @@
 import httpStatus from 'http-status';
-import { IPayments } from './payments.interface';
+import { IPayments, RevenueCatEvent } from './payments.interface';
 import Payments from './payments.models';
 import AppError from '../../error/AppError';
-import generateCryptoString from '../../utils/generateCryptoString';
 import { PAYMENT_STATUS } from './payments.constants';
 import { User } from '../user/user.models';
 import { USER_ROLE } from '../user/user.constants';
-import { ObjectId, startSession, Types } from 'mongoose';
+import { startSession } from 'mongoose';
 import config from '../../config';
-import { notificationServices } from '../notification/notification.service';
-import { IUser } from '../user/user.interface';
 import { modeType } from '../notification/notification.interface';
 import moment from 'moment';
 import Subscription from '../subscription/subscription.models';
@@ -17,9 +14,8 @@ import { ISubscriptions } from '../subscription/subscription.interface';
 import { IPackage } from '../package/package.interface';
 import StripeService from '../../core/stripe/stripe';
 import Package from '../package/package.models';
-import { populate } from 'dotenv';
 import QueryBuilder from '../../core/builder/QueryBuilder';
-import { notificationQueue, pubClient } from '../../redis';
+import { notificationQueue } from '../../redis';
 import { createToken } from '../auth/auth.utils';
 
 interface IPaymentItems {
@@ -32,148 +28,6 @@ interface IPaymentItems {
   };
   quantity: number;
 }
-
-// const checkout = async (payload: IPayments) => {
-//   const tranId = generateCryptoString(10);
-//   let paymentData: IPayments;
-
-//   // Fetch the order details, if order doesn't exist throw an error
-//   const order: IOrders | null = await Orders?.findById(payload?.order).populate(
-//     'orderItems.product',
-//     'additionalItems.topping',
-//   );
-
-//   if (!order) {
-//     throw new AppError(httpStatus.NOT_FOUND, 'Order Not Found!');
-//   }
-
-//   // Check if there's an existing pending payment for this order
-//   const isExistPayment: IPayments | null = await Payments.findOne({
-//     order: payload?.order,
-//     status: PAYMENT_STATUS.pending,
-//     user: payload?.user,
-//   });
-
-//   if (isExistPayment) {
-//     const payment = await Payments.findByIdAndUpdate(
-//       isExistPayment?._id,
-//       { tranId },
-//       { new: true },
-//     );
-//     paymentData = payment as IPayments;
-//   } else {
-//     // Calculate the order charge if any
-//     const orderCharge = await User.findOne({ role: USER_ROLE.admin }).then(
-//       admin => admin?.orderCharge ?? 0,
-//     );
-
-//     payload.tranId = tranId;
-//     payload.author = order?.author as ObjectId;
-//     payload.amount = Math.round(Number(order.totalPrice) + Number(orderCharge));
-
-//     // Create new payment entry in the database
-//     const createdPayment = await Payments.create(payload);
-
-//     if (!createdPayment) {
-//       throw new AppError(
-//         httpStatus.INTERNAL_SERVER_ERROR,
-//         'Failed to create payment',
-//       );
-//     }
-
-//     paymentData = createdPayment;
-//   }
-
-//   if (!paymentData)
-//     throw new AppError(httpStatus.BAD_REQUEST, 'Payment not found');
-
-//   // Prepare the products for checkout session
-//   const products: IPaymentItems[] = [];
-
-//   // Add order items to products list
-//   order?.orderItems?.forEach(item => {
-//     const price = Number((item?.product as IProducts)?.price);
-//     const quantity = Number(item?.quantity);
-
-//     // Validate the price and quantity before pushing to products
-//     if (isNaN(price) || isNaN(quantity) || price <= 0 || quantity <= 0) {
-//       console.error(
-//         `Invalid price or quantity for item: ${JSON.stringify(item)}`,
-//       );
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         `Invalid product details: ${JSON.stringify(item)}`,
-//       );
-//     }
-
-//     products.push({
-//       price_data: {
-//         currency: 'usd',
-//         product_data: {
-//           name: (item?.product as IProducts)?.name ?? 'A Foods',
-//         },
-//         unit_amount: Math.round(price * 100),
-//       },
-//       quantity: quantity,
-//     });
-//   });
-
-//   // Add additional items to products list
-//   order?.additionalItems?.forEach(item => {
-//     const price = Number((item.topping as ITopping).price);
-//     const quantity = Number(item?.quantity);
-
-//     // Validate the price and quantity before pushing to products
-//     if (isNaN(price) || isNaN(quantity) || price <= 0 || quantity <= 0) {
-//       console.error(
-//         `Invalid price or quantity for item: ${JSON.stringify(item)}`,
-//       );
-//       throw new AppError(
-//         httpStatus.BAD_REQUEST,
-//         `Invalid additional item details: ${JSON.stringify(item)}`,
-//       );
-//     }
-
-//     products.push({
-//       price_data: {
-//         currency: 'usd',
-//         product_data: {
-//           name: (item.topping as ITopping).name,
-//         },
-//         unit_amount: Math.round(price * 100),
-//       },
-//       quantity: quantity,
-//     });
-//   });
-
-//   // Check if user exists and has a customerId, if not create one
-//   let customerId;
-//   const user = await User.IsUserExistId(paymentData?.user?.toString());
-
-//   if (user?.customerId) {
-//     customerId = user?.customerId;
-//   } else {
-//     const customer = await StripeService.createCustomer(
-//       user?.email,
-//       user?.name,
-//     );
-//     customerId = customer?.id;
-//   }
-
-//   // Define success and cancel URLs
-//   const success_url = `${config.server_url}/payments/confirm-payment?sessionId={CHECKOUT_SESSION_ID}&paymentId=${paymentData?._id}&device=${payload?.device}`;
-//   const cancel_url = `${config.server_url}/payments/confirm-payment?sessionId={CHECKOUT_SESSION_ID}&paymentId=${paymentData?._id}`;
-
-//   // Create the checkout session using Stripe service
-//   const checkoutSession = await StripeService.getCheckoutSession(
-//     products,
-//     success_url,
-//     cancel_url,
-//     customerId,
-//   );
-
-//   return checkoutSession?.url;
-// };
 
 const checkout = async (payload: IPayments) => {
   let paymentData: IPayments | null;
@@ -247,7 +101,7 @@ const checkout = async (payload: IPayments) => {
 };
 
 const confirmPayment = async (query: Record<string, any>) => {
-  const { sessionId, paymentId, device } = query;
+  const { sessionId, paymentId } = query;
   const session = await startSession();
   const PaymentSession = await StripeService.getPaymentSession(sessionId);
   const paymentIntentId = PaymentSession.payment_intent as string;
@@ -437,6 +291,121 @@ const confirmPayment = async (query: Record<string, any>) => {
   }
 };
 
+const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
+  const event = payload.event;
+  const {
+    type,
+    app_user_id,
+    product_id,
+    transaction_id,
+    price,
+    expiration_at_ms,
+    purchased_at_ms,
+  } = event;
+
+  console.log('🚀 ~ revenueCatWebHook ~ event:', event);
+
+  const isValidUserId = /^[0-9a-fA-F]{24}$/.test(app_user_id);
+  if (!isValidUserId) {
+    console.warn(
+      `⚠️ Skipping event: app_user_id "${app_user_id}" is not a valid user ObjectId`,
+    );
+    return;
+  }
+
+  const user = await User.findById(app_user_id);
+  if (!user) {
+    console.warn(
+      `⚠️ Skipping event: No user found for app_user_id ${app_user_id}`,
+    );
+    return;
+  }
+
+  switch (type) {
+    case 'INITIAL_PURCHASE':
+    case 'RENEWAL': {
+      // Idempotency check: eki transaction duibar process na hoy
+      const existing = await Subscription.findOne({ trnId: transaction_id });
+      if (existing) {
+        console.log(
+          `Transaction ${transaction_id} already processed, skipping`,
+        );
+        return;
+      }
+
+      // RevenueCat product_id diye tomar nijer Package khuje ber koro
+      const pkg = await Package.findOne({ title: product_id });
+      if (!pkg) {
+        console.error(
+          `❌ No matching Package found for product_id: ${product_id}`,
+        );
+        return;
+      }
+
+      const sub = await Subscription.findOneAndUpdate(
+        { user: user._id, isDeleted: false },
+        {
+          user: user?._id,
+          package: pkg?._id,
+          isPaid: true,
+          isExpired: false,
+          expiredAt: expiration_at_ms ? new Date(expiration_at_ms) : null,
+          trnId: transaction_id,
+          amount: price,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+      await Payments.create({
+        amount: price,
+        user: user?._id,
+        subscription: sub?._id,
+
+        status: PAYMENT_STATUS.paid,
+        tranId: transaction_id,
+        paymentAt: purchased_at_ms ? new Date(purchased_at_ms) : new Date(),
+      });
+      console.log(`Subscription activated for user ${user._id}`);
+      break;
+    }
+
+    case 'CANCELLATION':
+    case 'EXPIRATION': {
+      await Subscription.findOneAndUpdate(
+        { user: user._id, isDeleted: false },
+        {
+          // isPaid: false,
+          isExpired: true,
+        },
+      );
+
+      console.log(`Subscription revoked for user ${user._id} (${type})`);
+      break;
+    }
+
+    case 'BILLING_ISSUE': {
+      // Access ekhoni revoke na kore, ekta flag/notification pathao
+      // (RevenueCat grace period dey, tai immediately revoke kora thik na)
+      console.warn(
+        `Billing issue for user ${user?._id}, transaction: ${transaction_id}`,
+      );
+      // TODO: notification/email service call koro user ke janate
+      break;
+    }
+
+    case 'PRODUCT_CHANGE': {
+      // Ei event e payment confirm hoyni, tai DB update na kore shudhu log/track koro
+      console.log(
+        `Product change intent for user ${user?._id}: ${product_id} -> ${event?.new_product_id}`,
+      );
+      break;
+    }
+
+    default:
+      console.log(`Unhandled event type: ${type}`);
+  }
+
+  return;
+};
 const createPayments = async (payload: IPayments) => {
   const result = await Payments.create(payload);
   if (!result) {
@@ -476,4 +445,5 @@ export const paymentsService = {
   getPaymentsById,
   checkout,
   confirmPayment,
+  revenueCatWebHook,
 };

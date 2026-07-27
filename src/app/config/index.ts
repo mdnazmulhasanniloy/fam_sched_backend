@@ -23,6 +23,7 @@ export default {
   redis_host: process.env.REDIS_HOST,
   redis_password: process.env.REDIS_PASSWORD,
 
+  revenuecat_webhook_secret: process.env.REVENUECAT_WEBHOOK_SECRET,
   database_url: process.env.DATABASE_URL,
   server_url: process.env.SERVER_URL,
   client_Url: process.env.CLIENT_URL,
