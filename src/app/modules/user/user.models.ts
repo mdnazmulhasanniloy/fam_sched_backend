@@ -1,4 +1,4 @@
-import { Error, Query, Schema, model } from 'mongoose';
+import { Error, Schema, model } from 'mongoose';
 import config from '../../config';
 import bcrypt from 'bcrypt';
 import { IUser, UserModel } from './user.interface';
@@ -150,6 +150,7 @@ const userSchema: Schema<IUser> = new Schema(
 
 userSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
 userSchema.pre('save', async function (next) {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
   const user = this;
   if (this.password) {
     user.password = await bcrypt.hash(

@@ -303,8 +303,6 @@ const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
     purchased_at_ms,
   } = event;
 
-  console.log('🚀 ~ revenueCatWebHook ~ event:', event);
-
   const isValidUserId = /^[0-9a-fA-F]{24}$/.test(app_user_id);
   if (!isValidUserId) {
     console.warn(
@@ -371,7 +369,7 @@ const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
     case 'CANCELLATION':
     case 'EXPIRATION': {
       await Subscription.findOneAndUpdate(
-        { user: user._id, isDeleted: false },
+        { user: user._id, isDeleted: false, isActive: true, isExpired: false },
         {
           // isPaid: false,
           isExpired: true,
