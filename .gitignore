@@ -12,3 +12,5 @@ temp_interactive_push.bat
 branch_structure.json
 config.bat
 .gitignore
+pnpm-lock.yaml
+pnpm-workspace.yaml

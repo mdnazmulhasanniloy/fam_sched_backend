@@ -24,6 +24,10 @@ const eventsSchema = new Schema<IEvents>(
       type: String,
       default: 'UTC',
     },
+    color: {
+      type: String,
+      default: null,
+    },
     location: {
       type: String,
       default: null,
