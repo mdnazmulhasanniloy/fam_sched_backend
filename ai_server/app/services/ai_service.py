@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from openai import OpenAI
 from dotenv import load_dotenv
 from app.services.validation import fix_past_dates
@@ -71,13 +72,17 @@ EVENT_SCHEMA = {
 def get_system_prompt() -> str:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d %A")
     return f"""
-You are a smart calendar assistant. 
+You are a smart calendar assistant.
 The user will describe what they want scheduled.
 Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
 You must extract ALL events from the description and return them in structured format.
 
-Rules:
-- If no specific date is mentioned, use today's date as a base.
+Hard rules:
+- If the text explicitly includes a time of day such as "6:30 PM", "8:00 AM", or "18:30", preserve that exact time. Do not shift AM/PM incorrectly.
+- If the text does not include a time of day at all, do not invent one. Leave startEvent and endEvent as empty strings ("") or null. Never guess 8:00 AM, 9:00 AM, or any other default time.
+- If the text only mentions a date such as "September 26th" without a time, keep the date out of the time fields and leave the time empty.
+- Do not default to a time when the user has not specified one.
+- If no specific date is mentioned, use today's date as a base for dates that do include a time.
 - Default event duration is 1 hour unless stated.
 - You MUST NOT generate any date in the past.
 - Pick sensible reminders (e.g. 10m, 1h, 1d before).
@@ -86,6 +91,36 @@ Rules:
 - The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
 - Return multiple events if the description implies multiple.
 """
+
+
+def normalize_event_time_fields(event: dict) -> dict:
+    for key in ("startEvent", "endEvent"):
+        value = event.get(key)
+
+        if value is None:
+            event[key] = ""
+            continue
+
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                event[key] = ""
+                continue
+
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                event[key] = ""
+                continue
+
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                iso_value = dt.isoformat().replace("+00:00", "Z")
+                if "." not in iso_value and "Z" in iso_value:
+                    iso_value = iso_value.replace("Z", ".000Z")
+                event[key] = iso_value
+            except ValueError:
+                event[key] = value
+
+    return event
 
 
 def parse_events_from_description(description: str) -> list[dict]:
@@ -103,7 +138,8 @@ def parse_events_from_description(description: str) -> list[dict]:
 
     tool_call = response.choices[0].message.tool_calls[0]
     arguments = json.loads(tool_call.function.arguments)
-    events = fix_past_dates(arguments["events"])
+    events = [normalize_event_time_fields(event) for event in arguments.get("events", [])]
+    events = fix_past_dates(events)
     return events
 
 
