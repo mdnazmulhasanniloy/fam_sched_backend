@@ -14,7 +14,7 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# The schema we force OpenAI to follow
+# The schema we force OpenAI to follow 
 EVENT_SCHEMA = {
     "type": "function",
     "function": {
