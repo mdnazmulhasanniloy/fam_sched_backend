@@ -18,7 +18,12 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "start:prod": "node ./dist/server.js",
-    "start:watch": "tsc --watch"
+    "start:watch": "tsc --watch",
+    "docker:build": "docker build -t nazmulhasn/any_day_app_backend:latest .",
+    "docker:push": "docker push nazmulhasn/any_day_app_backend:latest",
+    "docker:build:ai": "docker build -t nazmulhasn/any_day_app_ai:latest .",
+    "docker:push:ai": "docker push nazmulhasn/any_day_app_ai:latest",
+    "docker:build:push": "npm run docker:build && npm run docker:push"
   },
   "author": "MD Nazmul Hasan",
   "license": "ISC",

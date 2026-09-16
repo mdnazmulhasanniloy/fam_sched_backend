@@ -51,6 +51,7 @@ const calendarData = async (query: Record<string, any>) => {
         calendarMap[dateKey].push({
           _id: event._id,
           title: event.title,
+          color: event.color,
           startEvent: moment.utc(event.startEvent).tz(timezone).format(),
           endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
@@ -142,6 +143,7 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
           location: event.location,
           assignTo: event.assignTo,
           timezone: event.timezone,
+          color: event.color,
           remainder1: event.remainder1,
           remainder2: event.remainder2,
           remainder3: event.remainder3,

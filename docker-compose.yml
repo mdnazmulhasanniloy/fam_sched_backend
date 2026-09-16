@@ -44,7 +44,6 @@ services:
       # - frontend
     networks:
       - any_day_app_net
-      - mailcow_net
 
   certbot:
     image: certbot/certbot:latest
