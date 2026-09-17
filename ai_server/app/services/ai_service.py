@@ -14,7 +14,35 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# The schema we force OpenAI to follow 
+REMINDER_SLOTS = (
+    (0, "s"),
+    (5, "m"),
+    (10, "m"),
+    (15, "m"),
+    (30, "m"),
+    (1, "h"),
+    (2, "h"),
+    (1, "d"),
+    (2, "d"),
+    (1, "w"),
+)
+
+REMINDER_SCHEMA = {
+    "anyOf": [
+        {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer", "enum": [value]},
+                "unit": {"type": "string", "enum": [unit]},
+            },
+            "required": ["value", "unit"],
+            "additionalProperties": False,
+        }
+        for value, unit in REMINDER_SLOTS
+    ]
+}
+
+# The schema we force OpenAI to follow
 EVENT_SCHEMA = {
     "type": "function",
     "function": {
@@ -34,30 +62,9 @@ EVENT_SCHEMA = {
                             "note":       {"type": "string"},
                             "recurring":  {"type": "string", "enum": ["None", "Daily", "Weekly", "Monthly"]},
                             "isAssignMe": {"type": "boolean"},
-                            "remainder1": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {"type": "integer"},
-                                    "unit":  {"type": "string", "enum": ["m", "h", "d", "w"]}
-                                },
-                                "required": ["value", "unit"]
-                            },
-                            "remainder2": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {"type": "integer"},
-                                    "unit":  {"type": "string", "enum": ["m", "h", "d", "w"]}
-                                },
-                                "required": ["value", "unit"]
-                            },
-                            "remainder3": {
-                                "type": "object",
-                                "properties": {
-                                    "value": {"type": "integer"},
-                                    "unit":  {"type": "string", "enum": ["m", "h", "d", "w"]}
-                                },
-                                "required": ["value", "unit"]
-                            },
+                            "remainder1": REMINDER_SCHEMA,
+                            "remainder2": REMINDER_SCHEMA,
+                            "remainder3": REMINDER_SCHEMA,
                         },
                         "required": ["title", "startEvent", "endEvent", "note", "recurring", "isAssignMe", "remainder1", "remainder2", "remainder3"]
                     }
@@ -85,7 +92,7 @@ Hard rules:
 - If no specific date is mentioned, use today's date as a base for dates that do include a time.
 - Default event duration is 1 hour unless stated.
 - You MUST NOT generate any date in the past.
-- Pick sensible reminders (e.g. 10m, 1h, 1d before).
+- Every reminder must be exactly one of these slots: 0s, 5m, 10m, 15m, 30m, 1h, 2h, 1d, 2d, or 1w. Do not use any other value or unit.
 - If the user says recurring, set the recurring field accordingly.
 - isAssignMe is always true unless stated otherwise.
 - The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
@@ -123,6 +130,20 @@ def normalize_event_time_fields(event: dict) -> dict:
     return event
 
 
+def validate_event_reminders(event: dict) -> dict:
+    for key in ("remainder1", "remainder2", "remainder3"):
+        reminder = event.get(key)
+        if not isinstance(reminder, dict):
+            raise ValueError(f"{key} must be a reminder object")
+
+        slot = (reminder.get("value"), reminder.get("unit"))
+        if slot not in REMINDER_SLOTS:
+            allowed = ", ".join(f"{value}{unit}" for value, unit in REMINDER_SLOTS)
+            raise ValueError(f"{key} must use one of the allowed reminder slots: {allowed}")
+
+    return event
+
+
 def parse_events_from_description(description: str) -> list[dict]:
     system_prompt = get_system_prompt()  # ✅ fresh date every call
 
@@ -138,7 +159,10 @@ def parse_events_from_description(description: str) -> list[dict]:
 
     tool_call = response.choices[0].message.tool_calls[0]
     arguments = json.loads(tool_call.function.arguments)
-    events = [normalize_event_time_fields(event) for event in arguments.get("events", [])]
+    events = [
+        validate_event_reminders(normalize_event_time_fields(event))
+        for event in arguments.get("events", [])
+    ]
     events = fix_past_dates(events)
     return events
 
