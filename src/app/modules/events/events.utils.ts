@@ -28,7 +28,8 @@ export const calculateReminderTime = (
   unit: string,
   timezone: string,
 ) => {
-  if (!value || !unit) return null;
+  // eslint-disable-next-line no-undefined
+  if (value === undefined || value === null || !unit) return null;
 
   const unitMap: Record<string, any> = {
     s: 'seconds',

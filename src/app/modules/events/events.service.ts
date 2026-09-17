@@ -1,3 +1,4 @@
+/* eslint-disable no-undefined */
 import httpStatus from 'http-status';
 import { IEvents } from './events.interface';
 import Events from './events.models';
@@ -88,7 +89,7 @@ const createEvents = async (payload: IEvents) => {
     // ✅ 5. Schedule jobs
     for (const date of dates) {
       for (const r of reminders) {
-        if (!r?.value || !r?.unit) continue;
+        if (r?.value === undefined || r?.value === null || !r?.unit) continue;
 
         const reminderTime = calculateReminderTime(
           date,
@@ -366,7 +367,7 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
 
     for (const date of dates) {
       for (const r of reminders) {
-        if (!r?.value || !r?.unit) continue;
+        if (r?.value === undefined || r?.value === null || !r?.unit) continue;
 
         const reminderTime = calculateReminderTime(
           date,
