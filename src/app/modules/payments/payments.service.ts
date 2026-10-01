@@ -1,3 +1,4 @@
+/* eslint-disable no-undefined */
 import httpStatus from 'http-status';
 import { IPayments, RevenueCatEvent } from './payments.interface';
 import Payments from './payments.models';
@@ -301,7 +302,20 @@ const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
     price,
     expiration_at_ms,
     purchased_at_ms,
+    original_transaction_id,
+    auto_renew_status,
   } = event;
+
+  const logTransition = (previousStatus: string | undefined, newStatus: string, reason: string) => {
+    console.info('subscription_transition', {
+      userId: app_user_id, previousStatus, newStatus,
+      expiresAt: expiration_at_ms ? new Date(expiration_at_ms).toISOString() : null,
+      autoRenewStatus: auto_renew_status ?? null,
+      // eslint-disable-next-line no-undefined
+      appleTransactionId: transaction_id || undefined, reason,
+      timestamp: new Date().toISOString(),
+    });
+  };
 
   const isValidUserId = /^[0-9a-fA-F]{24}$/.test(app_user_id);
   if (!isValidUserId) {
@@ -347,12 +361,18 @@ const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
           package: pkg?._id,
           isPaid: true,
           isExpired: false,
+          status: 'active',
+          autoRenewStatus: auto_renew_status ?? true,
+          appleTransactionId: transaction_id,
+          originalTransactionId: original_transaction_id,
+          subscriptionSource: 'revenuecat',
           expiredAt: expiration_at_ms ? new Date(expiration_at_ms) : null,
           trnId: transaction_id,
           amount: price,
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
+      logTransition(undefined, 'active', type);
       await Payments.create({
         amount: price,
         user: user?._id,
@@ -366,27 +386,63 @@ const revenueCatWebHook = async (payload: { event: RevenueCatEvent }) => {
       break;
     }
 
-    case 'CANCELLATION':
-    case 'EXPIRATION': {
-      await Subscription.findOneAndUpdate(
-        { user: user._id, isDeleted: false, isActive: true, isExpired: false },
-        {
-          // isPaid: false,
-          isExpired: true,
-        },
-      );
+    case 'CANCELLATION': {
+      // Disabling renewal is not expiry: RevenueCat/Apple remains authoritative
+      // and an explicit EXPIRATION event is required before access is removed.
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing && !existing.isExpired) {
+        await Subscription.findByIdAndUpdate(existing._id, {
+          status: 'cancelled_pending_expiry', autoRenewStatus: false,
+          expiredAt: expiration_at_ms ? new Date(expiration_at_ms) : existing.expiredAt,
+        });
+        logTransition(existing.status, 'cancelled_pending_expiry', type);
+      }
+      break;
+    }
 
-      console.log(`Subscription revoked for user ${user._id} (${type})`);
+    case 'EXPIRATION': {
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing && !existing.isExpired) {
+        await Subscription.findByIdAndUpdate(existing._id, { isExpired: true, status: 'expired', autoRenewStatus: false });
+        logTransition(existing.status, 'expired', type);
+      }
       break;
     }
 
     case 'BILLING_ISSUE': {
-      // Access ekhoni revoke na kore, ekta flag/notification pathao
-      // (RevenueCat grace period dey, tai immediately revoke kora thik na)
-      console.warn(
-        `Billing issue for user ${user?._id}, transaction: ${transaction_id}`,
-      );
-      // TODO: notification/email service call koro user ke janate
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing && !existing.isExpired) {
+        await Subscription.findByIdAndUpdate(existing._id, { status: 'billing_retry' });
+        logTransition(existing.status, 'billing_retry', type);
+      }
+      break;
+    }
+
+    case 'GRACE_PERIOD': {
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing && !existing.isExpired) {
+        await Subscription.findByIdAndUpdate(existing._id, { status: 'grace_period' });
+        logTransition(existing.status, 'grace_period', type);
+      }
+      break;
+    }
+
+    case 'UNCANCELLATION': {
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing && !existing.isExpired) {
+        await Subscription.findByIdAndUpdate(existing._id, { status: 'active', autoRenewStatus: true });
+        logTransition(existing.status, 'active', type);
+      }
+      break;
+    }
+
+    case 'REFUND':
+    case 'REVOKE': {
+      const existing = await Subscription.findOne({ user: user._id, isDeleted: false });
+      if (existing) {
+        await Subscription.findByIdAndUpdate(existing._id, { isExpired: true, status: 'revoked', autoRenewStatus: false });
+        logTransition(existing.status, 'revoked', type);
+      }
       break;
     }
 

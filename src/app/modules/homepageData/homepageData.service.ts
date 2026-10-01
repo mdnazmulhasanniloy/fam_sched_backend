@@ -21,6 +21,7 @@ const calendarData = async (query: Record<string, any>) => {
     isDeleted: false,
     $or: [
       { user: new Types.ObjectId(user) },
+      { assignTo: new Types.ObjectId(user) },
       { includeInSchedule: new Types.ObjectId(user) },
     ],
     startEvent: { $lte: endOfMonth.clone().utc().toDate() },

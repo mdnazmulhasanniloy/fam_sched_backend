@@ -1,4 +1,4 @@
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import firebaseAdmin from '../../utils/firebase';
 
 export const createToken = (
@@ -7,7 +7,7 @@ export const createToken = (
   expiresIn: string,
 ) => {
   return jwt.sign(jwtPayload, secret, {
-    expiresIn,
+    expiresIn: expiresIn as SignOptions['expiresIn'],
   });
 };
 

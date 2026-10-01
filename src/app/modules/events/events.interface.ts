@@ -13,9 +13,9 @@ export interface IEvents {
   endEvent: Date;
   assignTo: ObjectId | IUser;
   includeInSchedule: ObjectId[] | IUser[];
-  remainder1: IRemainder;
-  remainder2: IRemainder;
-  remainder3: IRemainder;
+  remainder1?: IRemainder;
+  remainder2?: IRemainder;
+  remainder3?: IRemainder;
   recurring: 'daily' | 'weekly' | 'monthly' | 'none';
   note: string;
   color: string;

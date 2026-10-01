@@ -8,26 +8,26 @@ const router = Router();
 
 router.post(
   '/',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   requireSubscription(),
   memberController.createMember,
 );
 // router.patch('/:id', auth(USER_ROLE.user), memberController.updateMember);
 router.delete(
   '/:id',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   requireSubscription(),
   memberController.deleteMember,
 );
 router.get(
   '/:id',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   requireSubscription(),
   memberController.getMemberById,
 );
 router.get(
   '/',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   requireSubscription(),
   memberController.getMyMembers,
 );

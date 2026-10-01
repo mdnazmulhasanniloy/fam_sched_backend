@@ -46,7 +46,6 @@ const eventsSchema = new Schema<IEvents>(
     remainder1: {
       value: {
         type: Number,
-        default: 0,
       },
       unit: {
         type: String,
@@ -56,7 +55,6 @@ const eventsSchema = new Schema<IEvents>(
     remainder2: {
       value: {
         type: Number,
-        default: 0,
       },
       unit: {
         type: String,
@@ -67,7 +65,6 @@ const eventsSchema = new Schema<IEvents>(
     remainder3: {
       value: {
         type: Number,
-        default: 0,
       },
       unit: {
         type: String,

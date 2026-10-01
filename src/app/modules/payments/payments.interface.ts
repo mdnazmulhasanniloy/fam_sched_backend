@@ -33,4 +33,7 @@ export interface RevenueCatEvent {
   environment: 'SANDBOX' | 'PRODUCTION';
   store: string;
   period_type: string;
+  cancel_reason?: string;
+  auto_renew_status?: boolean;
+  is_trial_conversion?: boolean;
 }

@@ -12,6 +12,27 @@ const SubscriptionsSchema = new Schema<ISubscriptions>(
     amount: { type: Number, required: true, min: 0 },
     limit: { type: Number, default: null },
     isExpired: { type: Boolean, default: false },
+    // Optional/backwards-compatible normalized state for store subscriptions.
+    status: {
+      type: String,
+      enum: [
+        'active',
+        'cancelled_pending_expiry',
+        'expired',
+        'billing_retry',
+        'grace_period',
+        'revoked',
+      ],
+      default: 'active',
+    },
+    autoRenewStatus: { type: Boolean, default: null },
+    appleTransactionId: { type: String, default: null },
+    originalTransactionId: { type: String, default: null },
+    subscriptionSource: {
+      type: String,
+      enum: ['stripe', 'apple', 'revenuecat'],
+      default: 'stripe',
+    },
     isDeleted: { type: Boolean, default: false },
   },
   {

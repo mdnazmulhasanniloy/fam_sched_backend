@@ -1,211 +1,142 @@
-import os
 import json
+import logging
+import os
 import re
-from openai import OpenAI
-from dotenv import load_dotenv
-from app.services.validation import fix_past_dates
-
 from datetime import datetime, timezone
 
-today = datetime.now(timezone.utc).strftime("%Y-%m-%d %A")  # e.g. "2026-04-28 Tuesday"
-print(f"DEBUG today = {today}")
+from app.services.validation import validate_extracted_event_date
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # Allows deterministic normalization tests without provider extras.
+    def load_dotenv():
+        return False
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if OpenAI else None
+logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-REMINDER_SLOTS = (
-    (0, "s"),
-    (5, "m"),
-    (10, "m"),
-    (15, "m"),
-    (30, "m"),
-    (1, "h"),
-    (2, "h"),
-    (1, "d"),
-    (2, "d"),
-    (1, "w"),
+# Backend-owned defaults in the existing Mongo value/unit reminder schema.
+DEFAULT_AI_EVENT_REMINDERS = (
+    {"value": 1, "unit": "d"}, {"value": 1, "unit": "h"}, {"value": 0, "unit": "m"},
 )
 
-REMINDER_SCHEMA = {
-    "anyOf": [
-        {
-            "type": "object",
+EVENT_SCHEMA = {"type": "function", "function": {
+    "name": "create_events", "strict": True,
+    "description": "Extract every explicitly supported calendar event.",
+    "parameters": {"type": "object", "additionalProperties": False, "required": ["events"], "properties": {
+        "events": {"type": "array", "items": {"type": "object", "additionalProperties": False,
+            "required": ["title", "startEvent", "endEvent", "note", "location", "rsvpDeadline", "recurring", "isAssignMe"],
             "properties": {
-                "value": {"type": "integer", "enum": [value]},
-                "unit": {"type": "string", "enum": [unit]},
-            },
-            "required": ["value", "unit"],
-            "additionalProperties": False,
-        }
-        for value, unit in REMINDER_SLOTS
-    ]
-}
+                "title": {"type": ["string", "null"]}, "startEvent": {"type": ["string", "null"]},
+                "endEvent": {"type": ["string", "null"]}, "note": {"type": ["string", "null"]},
+                "location": {"type": ["string", "null"]}, "rsvpDeadline": {"type": ["string", "null"]},
+                "recurring": {"type": "string", "enum": ["none", "daily", "weekly", "monthly"]},
+                "isAssignMe": {"type": "boolean"},
+            }}}
+    }}}}
 
-# The schema we force OpenAI to follow
-EVENT_SCHEMA = {
-    "type": "function",
-    "function": {
-        "name": "create_events",
-        "description": "Extract all events from the user description and return them as a list.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "events": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "title":      {"type": "string"},
-                            "startEvent": {"type": "string", "description": "ISO 8601 format e.g. 2025-12-20T09:00:00.000Z"},
-                            "endEvent":   {"type": "string", "description": "ISO 8601 format"},
-                            "note":       {"type": "string"},
-                            "recurring":  {"type": "string", "enum": ["None", "Daily", "Weekly", "Monthly"]},
-                            "isAssignMe": {"type": "boolean"},
-                            "remainder1": REMINDER_SCHEMA,
-                            "remainder2": REMINDER_SCHEMA,
-                            "remainder3": REMINDER_SCHEMA,
-                        },
-                        "required": ["title", "startEvent", "endEvent", "note", "recurring", "isAssignMe", "remainder1", "remainder2", "remainder3"]
-                    }
-                }
-            },
-            "required": ["events"]
-        }
-    }
-}
+
+def normalize_input(text: str) -> str:
+    return (text.replace("\u00a0", " ").replace("–", "-").replace("—", "-")
+            .replace("â€“", "-").replace("â€”", "-").replace("\r\n", "\n"))
 
 
 def get_system_prompt() -> str:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d %A")
-    return f"""
-You are a smart calendar assistant.
-The user will describe what they want scheduled.
-Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
-You must extract ALL events from the description and return them in structured format.
-
-Hard rules:
-- If the text explicitly includes a time of day such as "6:30 PM", "8:00 AM", or "18:30", preserve that exact time. Do not shift AM/PM incorrectly.
-- If the text does not include a time of day at all, do not invent one. Leave startEvent and endEvent as empty strings ("") or null. Never guess 8:00 AM, 9:00 AM, or any other default time.
-- If the text only mentions a date such as "September 26th" without a time, keep the date out of the time fields and leave the time empty.
-- Do not default to a time when the user has not specified one.
-- If no specific date is mentioned, use today's date as a base for dates that do include a time.
-- Default event duration is 1 hour unless stated.
-- You MUST NOT generate any date in the past.
-- Every reminder must be exactly one of these slots: 0s, 5m, 10m, 15m, 30m, 1h, 2h, 1d, 2d, or 1w. Do not use any other value or unit.
-- If the user says recurring, set the recurring field accordingly.
-- isAssignMe is always true unless stated otherwise.
-- The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
-- Return multiple events if the description implies multiple.
-"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"""You are an event information extraction engine. Today is {today} UTC.
+Extract ALL valid events explicitly supported by the text; do not stop at the first event.
+This is not creative writing: never invent titles, dates, locations, times, reminders, or events. Use null when unavailable.
+Distinguish event dates from RSVP, registration, publication and unrelated dates. Preserve explicit years exactly and never move a past date into the future. A date-only event has null startEvent/endEvent. Timed events use ISO 8601 UTC. Preserve time ranges. Return only the tool result."""
 
 
-def normalize_event_time_fields(event: dict) -> dict:
-    for key in ("startEvent", "endEvent"):
-        value = event.get(key)
-
-        if value is None:
-            event[key] = ""
-            continue
-
-        if isinstance(value, str):
-            value = value.strip()
-            if not value:
-                event[key] = ""
-                continue
-
-            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
-                event[key] = ""
-                continue
-
-            try:
-                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                iso_value = dt.isoformat().replace("+00:00", "Z")
-                if "." not in iso_value and "Z" in iso_value:
-                    iso_value = iso_value.replace("Z", ".000Z")
-                event[key] = iso_value
-            except ValueError:
-                event[key] = value
-
-    return event
+def _iso(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip(): return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        if parsed.tzinfo is None: parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    except ValueError: return None
 
 
-def validate_event_reminders(event: dict) -> dict:
-    for key in ("remainder1", "remainder2", "remainder3"):
-        reminder = event.get(key)
-        if not isinstance(reminder, dict):
-            raise ValueError(f"{key} must be a reminder object")
+def _clock(value: str) -> tuple[int, int] | None:
+    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?", value.strip(), re.I)
+    if not match: return None
+    hour, minute, suffix = int(match.group(1)), int(match.group(2) or 0), (match.group(3) or "").lower().replace(".", "")
+    if minute > 59 or hour > 23 or (suffix and hour > 12): return None
+    if suffix: hour = (hour % 12) + (12 if suffix == "pm" else 0)
+    return hour, minute
 
-        slot = (reminder.get("value"), reminder.get("unit"))
-        if slot not in REMINDER_SLOTS:
-            allowed = ", ".join(f"{value}{unit}" for value, unit in REMINDER_SLOTS)
-            raise ValueError(f"{key} must use one of the allowed reminder slots: {allowed}")
 
-    return event
+def _source_time_range(text: str):
+    # A date paired with a range is stronger evidence than model output. Avoid RSVP lines.
+    pattern = re.compile(r"(?im)^(?!\s*(?:rsvp|register)\b).*?\b([A-Za-z]+\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?)\s*,?\s*(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?)\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?)")
+    match = pattern.search(text)
+    if not match: return None
+    date_text = re.sub(r"(st|nd|rd|th)\b", "", match.group(1), flags=re.I)
+    if not re.search(r"\b20\d{2}\b", date_text):
+        years = re.findall(r"\b(20\d{2})\b", text)
+        if years: date_text += ", " + years[0]
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y"):
+        try:
+            day = datetime.strptime(date_text, fmt).replace(tzinfo=timezone.utc)
+            start, end = _clock(match.group(2)), _clock(match.group(3))
+            return (day, start, end) if start and end else None
+        except ValueError: continue
+    return None
+
+
+def normalize_event(event: dict, source: str) -> dict:
+    result = dict(event)
+    result["startEvent"], result["endEvent"] = _iso(result.get("startEvent")), _iso(result.get("endEvent"))
+    result["recurring"] = str(result.get("recurring") or "none").lower()
+    result["isAssignMe"] = bool(result.get("isAssignMe", True))
+    source_range = _source_time_range(source)
+    # This is a repair for omitted/malformed model times, not a replacement for
+    # structured times on other events in the same chunk.
+    if source_range and (not result["startEvent"] or not result["endEvent"]):
+        day, start, end = source_range
+        result["startEvent"] = day.replace(hour=start[0], minute=start[1]).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        result["endEvent"] = day.replace(hour=end[0], minute=end[1]).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    if result["startEvent"] and result["endEvent"] and result["endEvent"] < result["startEvent"]: result["endEvent"] = None
+    for key, reminder in zip(("remainder1", "remainder2", "remainder3"), DEFAULT_AI_EVENT_REMINDERS): result[key] = reminder.copy()
+    return validate_extracted_event_date(result)
+
+
+def _chunks(text: str, maximum: int = 12000) -> list[str]:
+    result, current = [], ""
+    for paragraph in [p.strip() for p in text.split("\n\n") if p.strip()] or [text]:
+        if current and len(current) + len(paragraph) + 2 > maximum: result.append(current); current = paragraph
+        else: current = f"{current}\n\n{paragraph}".strip()
+    return result + ([current] if current else [])
+
+
+def _deduplicate(events: list[dict]) -> list[dict]:
+    seen, result = set(), []
+    for event in events:
+        key = tuple(str(event.get(k) or "").strip().lower() for k in ("title", "startEvent", "location"))
+        if key not in seen: seen.add(key); result.append(event)
+    return result
 
 
 def parse_events_from_description(description: str) -> list[dict]:
-    system_prompt = get_system_prompt()  # ✅ fresh date every call
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},  # ✅ use local var
-            {"role": "user",   "content": description}
-        ],
-        tools=[EVENT_SCHEMA],
-        tool_choice={"type": "function", "function": {"name": "create_events"}}
-    )
-
-    tool_call = response.choices[0].message.tool_calls[0]
-    arguments = json.loads(tool_call.function.arguments)
-    events = [
-        validate_event_reminders(normalize_event_time_fields(event))
-        for event in arguments.get("events", [])
-    ]
-    events = fix_past_dates(events)
-    return events
-
-
-# SYSTEM_PROMPT = f"""
-# You are a smart calendar assistant. 
-# The user will describe what they want scheduled.
-# Today is {today}. You MUST use this exact date for all calculations. Never use any other date. Do not rely on your training data for the current date. (e.g. "tomorrow", "next week", "in 3 days" etc.).
-# You must extract ALL events from the description and return them in structured format.
-
-# Rules:
-# - If no specific date is mentioned, use today's date as a base.
-# - Default event duration is 1 hour unless stated.
-# - You MUST NOT generate any date in the past.
-# - Pick sensible reminders (e.g. 10m, 1h, 1d before).
-# - If the user says recurring, set the recurring field accordingly.
-# - isAssignMe is always true unless stated otherwise.
-# - The "note" field should contain a brief, natural description of the event — include any relevant context the user mentioned (location, purpose, who it's with, etc.). If nothing extra was mentioned, write a short one-line summary of the event.
-# - Return multiple events if the description implies multiple.
-# """
-
-
-# def parse_events_from_description(description: str) -> list[dict]:
-#     """
-#     Takes a plain text description and returns a list of event dicts.
-#     """
-
-#     today = datetime.now().strftime("%Y-%m-%d %A")
-#     print(f"DEBUG today = {today}")
-#     prompt = SYSTEM_PROMPT.format(today=today)
-
-#     response = client.chat.completions.create(
-#         model="gpt-4o",
-#         messages=[
-#             {"role": "system", "content": SYSTEM_PROMPT},
-#             {"role": "user",   "content": description}
-#         ],
-#         tools=[EVENT_SCHEMA],
-#         tool_choice={"type": "function", "function": {"name": "create_events"}}
-#     )
-
-#     # Extract the function call arguments
-#     tool_call = response.choices[0].message.tool_calls[0]
-#     arguments = json.loads(tool_call.function.arguments)
-#     events = fix_past_dates(arguments["events"])
-#     return events
+    if client is None:
+        raise RuntimeError("OpenAI client is unavailable; install ai_server requirements")
+    normalized, request_id, extracted = normalize_input(description), os.urandom(6).hex(), []
+    for chunk in _chunks(normalized):
+        response = client.chat.completions.create(model="gpt-4o-mini", temperature=0, messages=[{"role": "system", "content": get_system_prompt()}, {"role": "user", "content": chunk}], tools=[EVENT_SCHEMA], tool_choice={"type": "function", "function": {"name": "create_events"}})
+        try:
+            events = json.loads(response.choices[0].message.tool_calls[0].function.arguments).get("events", [])
+            if not isinstance(events, list): raise ValueError("events must be an array")
+            extracted.extend(normalize_event(item, chunk) for item in events if isinstance(item, dict))
+        except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            logger.exception("AI validation failure requestId=%s inputSize=%s", request_id, len(chunk))
+            raise ValueError("Unable to extract valid events") from error
+    result = _deduplicate(extracted)
+    logger.info("AI extraction requestId=%s inputSize=%s extracted=%s valid=%s rejected=%s", request_id, len(normalized), len(extracted), len(result), len(extracted)-len(result))
+    return result

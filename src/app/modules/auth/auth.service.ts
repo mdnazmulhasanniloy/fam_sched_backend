@@ -24,7 +24,7 @@ import { User } from '../user/user.models';
 import path from 'path';
 import fs from 'fs';
 import UAParser from 'ua-parser-js';
-import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier';
+import { DecodedIdToken } from 'firebase-admin/auth';
 import { Login_With, USER_ROLE } from '../user/user.constants';
 import { Request } from 'express';
 import firebaseAdmin from '../../utils/firebase';
