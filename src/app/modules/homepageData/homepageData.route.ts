@@ -7,12 +7,12 @@ const router = Router();
 
 router.get(
   '/user-calendar',
-  auth(USER_ROLE.user),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   homepageDataController.calendarData,
 );
 router.get(
   '/worker-calendar',
-  auth(USER_ROLE.worker),
+  auth(USER_ROLE.user, USER_ROLE.worker),
   homepageDataController.WorkerCalendarData,
 );
 

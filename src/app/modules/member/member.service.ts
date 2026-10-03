@@ -10,7 +10,7 @@ import { sendEmail } from '../../utils/mailSender';
 import path from 'path';
 import fs from 'fs';
 import generateCryptoString from '../../utils/generateCryptoString';
-import { notificationQueue, pubClient } from '../../redis';
+import { notificationQueue } from '../../redis';
 
 const createMember = async (payload: IMemberCreate) => {
   const randomPass = generateCryptoString(6);
