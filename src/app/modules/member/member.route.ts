@@ -7,7 +7,7 @@ import { USER_ROLE } from '../user/user.constants';
 const router = Router();
 
 router.post(
-  '/:id/resend-invite',
+  '/resend-invite/:id',
   auth(
     USER_ROLE.user,
     USER_ROLE.worker,

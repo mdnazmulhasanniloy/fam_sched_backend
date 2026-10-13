@@ -52,12 +52,12 @@ const resendInvite = async (id: string, actorId: string, actorRole: string) => {
       'This member does not have a pending temporary password invite',
     );
   }
-  if (memberUser.temporaryPasswordExpiresAt.getTime() > now.getTime()) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      'The temporary password has not expired yet',
-    );
-  }
+  // if (memberUser.temporaryPasswordExpiresAt.getTime() > now.getTime()) {
+  //   throw new AppError(
+  //     httpStatus.BAD_REQUEST,
+  //     'The temporary password has not expired yet',
+  //   );
+  // }
 
   const owner = await User.findById(member.user);
   if (!owner) {
@@ -89,7 +89,7 @@ const resendInvite = async (id: string, actorId: string, actorRole: string) => {
       _id: memberUser._id,
       password: memberUser.password,
       needsPasswordChange: true,
-      temporaryPasswordExpiresAt: { $lte: now },
+      // temporaryPasswordExpiresAt: { $lte: now },
       isDeleted: false,
     },
     { $set: { password: hashedPassword, temporaryPasswordExpiresAt } },
@@ -126,7 +126,7 @@ const resendInvite = async (id: string, actorId: string, actorRole: string) => {
 };
 
 const createMember = async (payload: IMemberCreate) => {
-  const randomPass = generateCryptoString(6);
+  const randomPass = generateCryptoString(6, ' ').trim();
   const isExists = await User.isUserExist(payload?.email);
   const user = await User.findById(payload?.user);
   if (isExists) {
@@ -194,7 +194,10 @@ const getAllMember = async (query: Record<string, any>) => {
   const memberModel = new QueryBuilder(
     Member.find({}).populate([
       { path: 'user', select: '_id name email phoneNumber profile role' },
-      { path: 'member', select: '_id name email phoneNumber profile role' },
+      {
+        path: 'member',
+        select: '_id name email phoneNumber profile role needsPasswordChange',
+      },
     ]),
     query,
   )
