@@ -3,6 +3,20 @@ import catchAsync from '../../utils/catchAsync';
 import { memberService } from './member.service';
 import sendResponse from '../../utils/sendResponse';
 
+const resendInvite = catchAsync(async (req: Request, res: Response) => {
+  const result = await memberService.resendInvite(
+    req.params.id,
+    req.user.userId,
+    req.user.role,
+  );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Member invite resent successfully',
+    data: result,
+  });
+});
+
 const createMember = catchAsync(async (req: Request, res: Response) => {
   req.body.user = req?.user?.userId;
   const result = await memberService.createMember(req.body);
@@ -56,6 +70,7 @@ const deleteMember = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const memberController = {
+  resendInvite,
   createMember,
   getMyMembers,
   getMemberById,

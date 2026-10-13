@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "Family Schedule - Resend Member Invite",
+    "description": "Resend an expired member invite as its owner or an admin (admin, super_admin, sub_admin). Set base_url to your API origin, access_token to a valid owner/admin JWT, and member_id to the Member record ID (not the User ID). The recipient must still need a password change and have an expired temporaryPasswordExpiresAt. Success sends a new temporary password by email and gives it 48 hours of validity. No request body is required. A successful resend makes another immediate resend return 400 because the new password has not expired.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "API origin without /api/v1 or a trailing slash. Change the port to your server port."
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token of the member owner or an admin. Do not include the Bearer prefix."
+    },
+    {
+      "key": "member_id",
+      "value": "",
+      "type": "string",
+      "description": "Member document _id for an expired pending invite, not the recipient User _id."
+    }
+  ],
+  "item": [
+    {
+      "name": "Resend Expired Member Invite (Owner / Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/members/{{member_id}}/resend-invite",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "members",
+            "{{member_id}}",
+            "resend-invite"
+          ]
+        },
+        "description": "Uses collection Bearer authentication. Sends a new temporary password to the member email. Response contains memberId, email and temporaryPasswordExpiresAt; it does not include the password. Expected failures: 400 invalid ID, unexpired password, or no pending temporary invite; 401 missing/invalid token; 403 unrelated owner; 404 missing member/recipient/owner; 409 concurrent invite or password change. SMTP failure returns an error and conditionally restores previous credentials so the invite can be retried."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invite resent successfully', function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  pm.test('Success response matches requested member', function () {",
+              "    pm.expect(body.success).to.eql(true);",
+              "    pm.expect(body.data.memberId).to.eql(pm.variables.get('member_id'));",
+              "    pm.expect(body.data.email).to.be.a('string').and.not.empty;",
+              "  });",
+              "  pm.test('Expiry is approximately 48 hours from now', function () {",
+              "    const remaining = Date.parse(body.data.temporaryPasswordExpiresAt) - Date.now();",
+              "    pm.expect(remaining).to.be.within(48 * 60 * 60 * 1000 - 5 * 60 * 1000, 48 * 60 * 60 * 1000 + 5 * 60 * 1000);",
+              "  });",
+              "  pm.test('Response does not expose credentials', function () {",
+              "    pm.expect(body.data).to.not.have.property('password');",
+              "    pm.expect(body.data).to.not.have.property('temporaryPassword');",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "200 - Invite resent successfully",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/api/v1/members/{{member_id}}/resend-invite"
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Member invite resent successfully\",\n  \"data\": {\n    \"memberId\": \"507f1f77bcf86cd799439011\",\n    \"email\": \"member@example.com\",\n    \"temporaryPasswordExpiresAt\": \"2026-10-15T10:00:00.000Z\"\n  }\n}"
+        }
+      ]
+    }
+  ]
+}

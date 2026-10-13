@@ -20,6 +20,7 @@ export interface IUser {
   role: string;
   address?: string;
   needsPasswordChange: boolean;
+  temporaryPasswordExpiresAt?: Date | null;
   passwordChangedAt?: Date;
   isDeleted: boolean;
   expireAt: Date;

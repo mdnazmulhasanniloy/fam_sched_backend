@@ -99,6 +99,10 @@ const userSchema: Schema<IUser> = new Schema(
     needsPasswordChange: {
       type: Boolean,
     },
+    temporaryPasswordExpiresAt: {
+      type: Date,
+      default: null,
+    },
     fcmToken: {
       type: String,
       default: null,

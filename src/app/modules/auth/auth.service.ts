@@ -29,6 +29,18 @@ import { Login_With, USER_ROLE } from '../user/user.constants';
 import { Request } from 'express';
 import firebaseAdmin from '../../utils/firebase';
 
+const ensureTemporaryPasswordIsValid = (user: IUser) => {
+  if (
+    user.temporaryPasswordExpiresAt &&
+    user.temporaryPasswordExpiresAt.getTime() <= Date.now()
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Temporary password has expired. Please reset your password',
+    );
+  }
+};
+
 // Login
 const login = async (payload: TLogin, req: Request) => {
   const user: IUser | null = await User.isUserExist(payload?.email);
@@ -43,6 +55,8 @@ const login = async (payload: TLogin, req: Request) => {
   if (!(await User.isPasswordMatched(payload.password, user.password))) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Password does not match');
   }
+
+  ensureTemporaryPasswordIsValid(user);
 
   if (!user?.verification?.status) {
     throw new AppError(httpStatus.FORBIDDEN, 'User account is not verified');
@@ -112,6 +126,7 @@ const changePassword = async (id: string, payload: TChangePassword) => {
   if (!(await User.isPasswordMatched(payload?.oldPassword, user.password))) {
     throw new AppError(httpStatus.FORBIDDEN, 'Old password does not match');
   }
+  ensureTemporaryPasswordIsValid(user);
   if (payload?.newPassword !== payload?.confirmPassword) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -129,6 +144,8 @@ const changePassword = async (id: string, payload: TChangePassword) => {
     {
       $set: {
         password: hashedPassword,
+        needsPasswordChange: false,
+        temporaryPasswordExpiresAt: null,
         passwordChangedAt: new Date(),
       },
     },
@@ -241,6 +258,7 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
   const result = await User.findByIdAndUpdate(decode?.userId, {
     password: hashedPassword,
     needsPasswordChange: false,
+    temporaryPasswordExpiresAt: null,
     passwordChangedAt: new Date(),
     verification: {
       otp: 0,
