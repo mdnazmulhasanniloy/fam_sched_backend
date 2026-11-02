@@ -86,6 +86,14 @@ const eventsSchema = new Schema<IEvents>(
         type: String,
       },
     ],
+    assignmentStatus: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+    },
+    respondedAt: {
+      type: Date,
+      default: null,
+    },
     note: {
       type: String,
       default: null,

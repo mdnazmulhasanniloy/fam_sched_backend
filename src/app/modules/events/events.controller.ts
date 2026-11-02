@@ -47,6 +47,20 @@ const updateEvents = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const respondToAssignment = catchAsync(async (req: Request, res: Response) => {
+  const result = await eventsService.respondToAssignment(
+    req.params.id,
+    req.user.userId,
+    req.body.status,
+  );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: `Event ${req.body.status} successfully`,
+    data: result,
+  });
+});
+
 const deleteEvents = catchAsync(async (req: Request, res: Response) => {
   const result = await eventsService.deleteEvents(req.params.id);
   sendResponse(res, {
@@ -63,4 +77,5 @@ export const eventsController = {
   getEventsById,
   updateEvents,
   deleteEvents,
+  respondToAssignment,
 };

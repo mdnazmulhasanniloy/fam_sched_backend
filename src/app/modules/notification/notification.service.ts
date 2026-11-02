@@ -8,8 +8,25 @@ import moment from 'moment';
 import QueryBuilder from '../../core/builder/QueryBuilder';
 
 // Insert notifications into the database
+const isDuplicateKey = (err: any) =>
+  err?.code === 11000 ||
+  err?.writeErrors?.some((item: { code?: number }) => item?.code === 11000);
+
 const insertNotificationIntoDb = async (payload: any) => {
-  const result = await Notification.insertMany(payload);
+  if (payload && !Array.isArray(payload) && payload.dedupeKey) {
+    const existing = await Notification.findOne({ dedupeKey: payload.dedupeKey });
+    if (existing) return existing;
+  }
+
+  let result;
+  try {
+    result = await Notification.insertMany(payload);
+  } catch (err) {
+    if (isDuplicateKey(err) && payload?.dedupeKey) {
+      return Notification.findOne({ dedupeKey: payload.dedupeKey });
+    }
+    throw err;
+  }
   if (!result) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Notification created failed');
   }

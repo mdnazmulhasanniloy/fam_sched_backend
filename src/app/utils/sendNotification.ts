@@ -11,6 +11,10 @@ type NotificationPayload = {
   userId: string;
   save?: boolean;
   token?: string;
+  type?: string;
+  referenceId?: string;
+  modelType?: modeType;
+  dedupeKey?: string;
 };
 
 export const sendSingleNotification = async (
@@ -20,12 +24,29 @@ export const sendSingleNotification = async (
   try {
     if (!fcmToken)
       throw new AppError(httpStatus.BAD_REQUEST, 'FCM token is required');
-    const { title, body, data, userId, save = true } = payload;
+    const {
+      title,
+      body,
+      data,
+      userId,
+      save = true,
+      type,
+      referenceId,
+      modelType = modeType.Events,
+      dedupeKey,
+    } = payload;
 
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    const dataPayload: { payload: string } | {} = data
-      ? { payload: JSON.stringify(data?.id) }
-      : {};
+    const dataPayload: Record<string, string> = {};
+    if (data?.id != null) {
+      dataPayload.payload = JSON.stringify(data.id);
+    }
+    const eventId = data?.id ?? data?._id;
+    if (eventId != null) {
+      dataPayload.eventId = String(eventId);
+    }
+    if (type) {
+      dataPayload.type = type;
+    }
     await firebaseAdmin.messaging().send({
       token: fcmToken,
       notification: { title, body },
@@ -37,8 +58,10 @@ export const sendSingleNotification = async (
         receiver: userId,
         message: title,
         description: body,
-        refference: data?._id,
-        model_type: modeType.Events,
+        refference: referenceId || data?._id || data?.id,
+        model_type: modelType,
+        type: type || null,
+        ...(dedupeKey ? { dedupeKey } : {}),
       });
     }
 

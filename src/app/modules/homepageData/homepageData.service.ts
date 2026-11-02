@@ -17,12 +17,16 @@ const calendarData = async (query: Record<string, any>) => {
     .endOf('month');
 
   // 1️⃣ MongoDB থেকে raw events
+  const userId = new Types.ObjectId(user);
   const events = await Events.find({
     isDeleted: false,
     $or: [
-      { user: new Types.ObjectId(user) },
-      { assignTo: new Types.ObjectId(user) },
-      { includeInSchedule: new Types.ObjectId(user) },
+      { user: userId },
+      { assignTo: userId, assignmentStatus: { $ne: 'rejected' } },
+      {
+        includeInSchedule: userId,
+        assignmentStatus: { $ne: 'rejected' },
+      },
     ],
     startEvent: { $lte: endOfMonth.clone().utc().toDate() },
     endEvent: { $gte: startOfMonth.clone().utc().toDate() },
@@ -58,6 +62,8 @@ const calendarData = async (query: Record<string, any>) => {
           location: event.location,
           timezone: event.timezone,
           assignTo: event.assignTo,
+          assignmentStatus: event.assignmentStatus || null,
+          respondedAt: event.respondedAt || null,
           remainder1: event.remainder1,
           remainder2: event.remainder2,
           remainder3: event.remainder3,
@@ -109,8 +115,11 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
     isDeleted: false,
     $or: [
       { user: userId },
-      { assignTo: userId },
-      { includeInSchedule: { $in: [userId] } },
+      { assignTo: userId, assignmentStatus: { $ne: 'rejected' } },
+      {
+        includeInSchedule: { $in: [userId] },
+        assignmentStatus: { $ne: 'rejected' },
+      },
     ],
     startEvent: { $lte: endOfMonth.clone().utc().toDate() },
     endEvent: { $gte: startOfMonth.clone().utc().toDate() },
@@ -143,6 +152,8 @@ const WorkerCalendarData = async (query: Record<string, any>) => {
           endEvent: moment.utc(event.endEvent).tz(timezone).format(),
           location: event.location,
           assignTo: event.assignTo,
+          assignmentStatus: event.assignmentStatus || null,
+          respondedAt: event.respondedAt || null,
           timezone: event.timezone,
           color: event.color,
           remainder1: event.remainder1,

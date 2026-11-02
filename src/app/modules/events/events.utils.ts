@@ -22,14 +22,29 @@ import moment from 'moment-timezone';
 //   return new Date(startUtc - diff);
 // };
 
+const REMINDER_UNITS = ['s', 'm', 'h', 'd', 'w'] as const;
+
+export const isEnabledReminder = (reminder?: {
+  value?: number | null;
+  unit?: string | null;
+} | null): reminder is { value: number; unit: (typeof REMINDER_UNITS)[number] } => {
+  if (!reminder?.unit) return false;
+  const { value, unit } = reminder;
+  if (value === undefined || value === null || !Number.isFinite(value) || value <= 0) {
+    return false;
+  }
+  return (REMINDER_UNITS as readonly string[]).includes(unit);
+};
+
 export const calculateReminderTime = (
   startDate: Date,
   value: number,
   unit: string,
   timezone: string,
 ) => {
+  // value 0 is "No Reminder" in the app, not a start-time alert
   // eslint-disable-next-line no-undefined
-  if (value === undefined || value === null || !unit) return null;
+  if (value === undefined || value === null || value <= 0 || !unit) return null;
 
   const unitMap: Record<string, any> = {
     s: 'seconds',

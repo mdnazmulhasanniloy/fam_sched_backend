@@ -19,3 +19,15 @@ const schema = z.object({
   isAssignMe: z.boolean().default(false),
   isDeleted: z.boolean().default(false),
 });
+
+const respondToAssignmentSchema = z.object({
+  body: z.object({
+    status: z.enum(['accepted', 'rejected'], {
+      required_error: 'Response status is required',
+    }),
+  }),
+});
+
+export const eventsValidation = {
+  respondToAssignmentSchema,
+};

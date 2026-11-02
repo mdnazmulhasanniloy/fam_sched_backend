@@ -3,7 +3,7 @@ import httpStatus from 'http-status';
 import { IEvents } from './events.interface';
 import Events from './events.models';
 import AppError from '../../error/AppError';
-import { eventQueue, pubClient } from '../../redis';
+import { eventQueue, notificationQueue, pubClient } from '../../redis';
 import QueryBuilder from '../../core/builder/QueryBuilder';
 import moment from 'moment-timezone';
 import {
@@ -11,8 +11,147 @@ import {
   convertEventToUserTZ,
   formatReminderText,
   generateRecurringDates,
+  isEnabledReminder,
 } from './events.utils';
 import { User } from '../user/user.models';
+import { modeType } from '../notification/notification.interface';
+import { sendSingleNotification } from '../../utils/sendNotification';
+
+const notifyUserAboutEvent = async ({
+  userId,
+  title,
+  body,
+  referenceId,
+  type,
+}: {
+  userId: string;
+  title: string;
+  body: string;
+  referenceId: string;
+  type: 'event_assigned' | 'event_accepted' | 'event_rejected';
+}) => {
+  const user = await User.findById(userId).select('fcmToken notification');
+  if (!user) return;
+
+  if (user.fcmToken && user.notification) {
+    try {
+      await sendSingleNotification(user.fcmToken, {
+        title,
+        body,
+        userId,
+        save: true,
+        type,
+        referenceId,
+        data: {
+          id: referenceId,
+          _id: referenceId,
+        },
+      });
+      return;
+    } catch (err) {
+      console.error('Push notification failed:', err);
+    }
+  }
+
+  await notificationQueue.add('send_notification', {
+    receiver: userId,
+    message: title,
+    description: body,
+    refference: referenceId,
+    model_type: modeType.Events,
+    type,
+  });
+};
+
+const notifyEventAssignee = async (
+  event: IEvents,
+  reason: 'created' | 'updated' = 'created',
+) => {
+  const assigneeId = event.assignTo?.toString();
+  const creatorId = event.user?.toString();
+  if (!assigneeId || !creatorId || assigneeId === creatorId) return;
+
+  const creator = await User.findById(creatorId).select('name');
+  const creatorName = creator?.name || 'Someone';
+  const updated = reason === 'updated';
+
+  await notifyUserAboutEvent({
+    userId: assigneeId,
+    title: updated ? 'Event updated' : 'New event assigned',
+    body: updated
+      ? `${creatorName} updated ${event.title}. Please accept or decline again.`
+      : `${creatorName} assigned you ${event.title}. Please accept or decline.`,
+    referenceId: event._id.toString(),
+    type: 'event_assigned',
+  });
+};
+
+const scheduleReminderJobs = async (event: IEvents, userIds: Set<string>) => {
+  const timezone = event.timezone || 'UTC';
+  const dates = generateRecurringDates(
+    event.startEvent!,
+    event.endEvent!,
+    event.recurring,
+    timezone,
+  );
+  const reminders = [event.remainder1, event.remainder2, event.remainder3];
+  const now = Date.now();
+  const jobIds: string[] = [];
+  const scheduledWindows = new Set<string>();
+
+  for (const date of dates) {
+    for (const reminder of reminders) {
+      if (!isEnabledReminder(reminder)) continue;
+
+      const reminderTime = calculateReminderTime(
+        date,
+        reminder.value,
+        reminder.unit,
+        timezone,
+      );
+      if (!reminderTime || reminderTime.getTime() < now) continue;
+
+      const eventTime = moment.utc(event.startEvent).tz(timezone).format('hh:mm A');
+      const reminderText = formatReminderText(reminder.value, reminder.unit);
+      const title = 'Upcoming event';
+      const body = `${event.title} starts in ${reminderText} at ${eventTime}.`;
+      const delay = Math.max(0, reminderTime.getTime() - now);
+
+      for (const userId of userIds) {
+        const windowKey = `${userId}-${reminderTime.getTime()}`;
+        if (scheduledWindows.has(windowKey)) continue;
+        scheduledWindows.add(windowKey);
+
+        const jobId = `reminder-${event._id}-${userId}-${reminderTime.getTime()}`;
+        const dedupeKey = `${event._id}:${userId}:${reminderTime.getTime()}`;
+        try {
+          const job = await eventQueue.add(
+            'send_event_notification',
+            {
+              eventId: event._id,
+              userId,
+              title,
+              body,
+              reminderValue: reminder.value,
+              reminderUnit: reminder.unit,
+              dedupeKey,
+            },
+            { delay, jobId },
+          );
+          jobIds.push(String(job.id));
+        } catch (err: any) {
+          if (String(err?.message || '').toLowerCase().includes('already exists')) {
+            jobIds.push(jobId);
+            continue;
+          }
+          throw err;
+        }
+      }
+    }
+  }
+
+  return jobIds;
+};
 
 const createEvents = async (payload: IEvents) => {
   const session = await Events.startSession();
@@ -21,6 +160,22 @@ const createEvents = async (payload: IEvents) => {
   try {
     // Clean timezone - remove spaces
     payload.timezone = (payload.timezone || 'UTC').replace(/\s+/g, '');
+    delete payload.assignmentStatus;
+    delete payload.respondedAt;
+
+    const creatorId = payload.user?.toString();
+    const assigneeId = payload.assignTo?.toString();
+    const requiresResponse = Boolean(
+      assigneeId && creatorId && assigneeId !== creatorId,
+    );
+
+    if (requiresResponse) {
+      payload.assignmentStatus = 'pending';
+      payload.respondedAt = null;
+    } else if (assigneeId) {
+      payload.assignmentStatus = 'accepted';
+      payload.respondedAt = new Date();
+    }
 
     // ✅ 1. Convert to UTC BEFORE saving
     payload.isCompleted = false;
@@ -72,64 +227,8 @@ const createEvents = async (payload: IEvents) => {
       console.warn('⚠️ No users to notify');
     }
 
-    // ✅ 4. Generate dates (UTC)
-    const dates = generateRecurringDates(
-      event.startEvent!,
-      event.endEvent!,
-      event.recurring,
-      event.timezone || 'UTC',
-    );
-
-    const reminders = [event.remainder1, event.remainder2, event.remainder3];
-
-    const allJobIds: any[] = [];
-
-    const nowUTC = moment.utc().toDate();
-
-    // ✅ 5. Schedule jobs
-    for (const date of dates) {
-      for (const r of reminders) {
-        if (r?.value === undefined || r?.value === null || !r?.unit) continue;
-
-        const reminderTime = calculateReminderTime(
-          date,
-          r.value,
-          r.unit,
-          event.timezone || 'UTC',
-        );
-        const eventTime = moment
-          .utc(event.startEvent)
-          .tz(event.timezone)
-          .format('hh:mm A');
-
-        if (!reminderTime || reminderTime < nowUTC) continue;
-        const reminderText = formatReminderText(r.value, r.unit as any);
-        const title = `Upcoming Event`;
-        const body = `Your event "${event.title}" starts in ${reminderText} at ${eventTime}.`;
-
-        // ✅ Safe delay
-        const delay = Math.max(0, reminderTime.getTime() - Date.now());
-        for (const userId of usersToNotify) {
-          const job = await eventQueue.add(
-            'send_event_notification',
-            {
-              // eventId: event._id,
-              // userId,
-              // title: `Reminder: ${event.title}`,
-              // body: `You have an event: ${event.title}`,
-              eventId: event._id,
-              userId,
-              title,
-              body,
-              reminderValue: r.value,
-              reminderUnit: r.unit,
-            },
-            { delay },
-          );
-          allJobIds.push(job.id);
-        }
-      }
-    }
+    // ✅ 4. Schedule jobs. value 0 is "No Reminder" and is not queued.
+    const allJobIds = await scheduleReminderJobs(event, usersToNotify);
 
     console.log('✅ Created jobs:', allJobIds);
 
@@ -150,6 +249,14 @@ const createEvents = async (payload: IEvents) => {
       console.error('Redis cache error:', err);
     }
 
+    if (requiresResponse) {
+      try {
+        await notifyEventAssignee(event);
+      } catch (notifyErr) {
+        console.error('Assignment notification failed:', notifyErr);
+      }
+    }
+
     return event;
   } catch (err) {
     await session.abortTransaction();
@@ -162,14 +269,20 @@ const createEvents = async (payload: IEvents) => {
 
 const getAllEvents = async (query: Record<string, any>, userId: string) => {
   try {
-    const cacheKey = 'events:' + JSON.stringify(query);
+    const cacheKey = 'events:' + userId + ':' + JSON.stringify(query);
     // 1. Check cache
     const cachedData = await pubClient.get(cacheKey);
     if (cachedData) {
       return JSON.parse(cachedData);
     }
     const eventsModel = new QueryBuilder(
-      Events.find({ isDeleted: false }),
+      Events.find({
+        isDeleted: false,
+        $or: [
+          { user: userId },
+          { assignmentStatus: { $ne: 'rejected' } },
+        ],
+      }),
       query,
     )
       .search([''])
@@ -210,7 +323,13 @@ const getAllEvents = async (query: Record<string, any>, userId: string) => {
   } catch (err) {
     console.error('Redis caching error (getAllEvents):', err);
     const eventsModel = new QueryBuilder(
-      Events.find({ isDeleted: false }),
+      Events.find({
+        isDeleted: false,
+        $or: [
+          { user: userId },
+          { assignmentStatus: { $ne: 'rejected' } },
+        ],
+      }),
       query,
     )
       .search([''])
@@ -273,6 +392,9 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
   session.startTransaction();
 
   try {
+    delete payload.assignmentStatus;
+    delete payload.respondedAt;
+
     // Clean timezone - remove spaces
     if (payload.timezone) {
       payload.timezone = (payload.timezone as string).replace(/\s+/g, '');
@@ -350,63 +472,28 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
     }
 
     // =============== 5️⃣ Generate Dates & Reminders ===============
-    const dates = generateRecurringDates(
-      updatedEvent.startEvent!,
-      updatedEvent.endEvent!,
-      updatedEvent.recurring,
-      updatedEvent.timezone,
-    );
-
-    const reminders = [
-      updatedEvent.remainder1,
-      updatedEvent.remainder2,
-      updatedEvent.remainder3,
-    ];
-
-    const newJobIds: any[] = [];
-
-    for (const date of dates) {
-      for (const r of reminders) {
-        if (r?.value === undefined || r?.value === null || !r?.unit) continue;
-
-        const reminderTime = calculateReminderTime(
-          date,
-          r.value,
-          r.unit,
-          updatedEvent?.timezone,
-        );
-        if (!reminderTime || reminderTime < new Date()) continue;
-        const reminderText = formatReminderText(r.value, r.unit as any);
-        const eventTime = moment
-          .utc(updatedEvent?.startEvent)
-          .tz(updatedEvent?.timezone)
-          .format('hh:mm A');
-
-        const title = `Upcoming Event`;
-        const body = `Your event "${updatedEvent?.title}" starts in ${reminderText} at ${eventTime}.`;
-
-        const delay = reminderTime.getTime() - Date.now();
-
-        for (const userId of usersToNotify) {
-          const job = await eventQueue.add(
-            'send_event_notification',
-            {
-              eventId: updatedEvent._id,
-              userId,
-              title,
-              body,
-            },
-            { delay },
-          );
-
-          newJobIds.push(job.id);
-        }
-      }
-    }
+    const newJobIds = await scheduleReminderJobs(updatedEvent, usersToNotify);
 
     // =============== 6️⃣ Insert New JobIds Safely ===============
     if (newJobIds.length) {
       updatedEvent.jobIds = newJobIds;
+      await updatedEvent.save({ session });
+    }
+
+    const previousAssignee = oldEvent.assignTo?.toString();
+    const nextAssignee = updatedEvent.assignTo?.toString();
+    const ownerId = updatedEvent.user?.toString();
+    const assigneeChanged = nextAssignee !== previousAssignee;
+    let notifyAssignee = false;
+
+    if (nextAssignee && ownerId && nextAssignee !== ownerId) {
+      updatedEvent.assignmentStatus = 'pending';
+      updatedEvent.respondedAt = null;
+      notifyAssignee = true;
+      await updatedEvent.save({ session });
+    } else if (assigneeChanged && nextAssignee && nextAssignee === ownerId) {
+      updatedEvent.assignmentStatus = 'accepted';
+      updatedEvent.respondedAt = new Date();
       await updatedEvent.save({ session });
     }
 
@@ -417,6 +504,17 @@ const updateEvents = async (id: string, payload: Partial<IEvents>) => {
     await pubClient.del(`events:${id}`);
     const keys = await pubClient.keys('events:*');
     if (keys.length) await pubClient.del(keys);
+
+    if (notifyAssignee) {
+      try {
+        await notifyEventAssignee(
+          updatedEvent,
+          assigneeChanged ? 'created' : 'updated',
+        );
+      } catch (notifyErr) {
+        console.error('Assignment notification failed:', notifyErr);
+      }
+    }
 
     return updatedEvent;
   } catch (err) {
@@ -478,10 +576,72 @@ const deleteEvents = async (id: string) => {
   }
 };
 
+const respondToAssignment = async (
+  id: string,
+  userId: string,
+  status: 'accepted' | 'rejected',
+) => {
+  const event = await Events.findById(id);
+  if (!event || event.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Event not found');
+  }
+
+  const assigneeId = event.assignTo?.toString();
+  const creatorId = event.user?.toString();
+
+  if (!assigneeId || !creatorId || assigneeId === creatorId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'This event does not require a response',
+    );
+  }
+
+  if (assigneeId !== userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'Only the assigned member can respond to this event',
+    );
+  }
+
+  if (event.assignmentStatus === status) {
+    return event;
+  }
+
+  event.assignmentStatus = status;
+  event.respondedAt = new Date();
+  await event.save();
+
+  try {
+    await pubClient.del(`events:${id}`);
+    const keys = await pubClient.keys('events:*');
+    if (keys.length) await pubClient.del(keys);
+  } catch (err) {
+    console.error('Redis cache error:', err);
+  }
+
+  try {
+    const assignee = await User.findById(userId).select('name');
+    const assigneeName = assignee?.name || 'A member';
+    const accepted = status === 'accepted';
+    await notifyUserAboutEvent({
+      userId: creatorId,
+      title: accepted ? 'Event accepted' : 'Event declined',
+      body: `${assigneeName} ${accepted ? 'accepted' : 'declined'} ${event.title}.`,
+      referenceId: event._id.toString(),
+      type: accepted ? 'event_accepted' : 'event_rejected',
+    });
+  } catch (err) {
+    console.error('Response notification failed:', err);
+  }
+
+  return event;
+};
+
 export const eventsService = {
   createEvents,
   getAllEvents,
   getEventsById,
   updateEvents,
   deleteEvents,
+  respondToAssignment,
 };

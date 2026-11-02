@@ -26,6 +26,15 @@ const NotificationSchema = new Schema<TNotification>(
       type: String,
       default: '',
     },
+    type: {
+      type: String,
+      default: null,
+    },
+    dedupeKey: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     read: {
       type: Boolean,
       default: false,

@@ -22,6 +22,8 @@ export interface IEvents {
   timezone: string;
   jobIds: string[];
   notifyHistory: Date[];
+  assignmentStatus?: 'pending' | 'accepted' | 'rejected';
+  respondedAt?: Date | null;
   isAssignMe: boolean;
   isDeleted: boolean;
   isCompleted: boolean;

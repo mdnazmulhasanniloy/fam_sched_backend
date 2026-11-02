@@ -130,6 +130,17 @@ const createMember = async (payload: IMemberCreate) => {
   const isExists = await User.isUserExist(payload?.email);
   const user = await User.findById(payload?.user);
   if (isExists) {
+    const existingMember = await Member.findOne({
+      user: payload.user,
+      member: isExists._id,
+    });
+    if (existingMember) {
+      throw new AppError(
+        httpStatus.CONFLICT,
+        'This member is already assigned to this user',
+      );
+    }
+
     const member = await Member.create({
       user: payload.user,
       member: isExists._id,
@@ -142,6 +153,11 @@ const createMember = async (payload: IMemberCreate) => {
       refference: member?._id,
       model_type: modeType.Member,
     });
+    await sendEmail(
+      isExists.email,
+      'You are invited to a Sky Sync team',
+      '<h1>You are invited!</h1><p>You have been added as a member of a Sky Sync team. We look forward to having you on the team!</p>',
+    );
     return member;
   }
 

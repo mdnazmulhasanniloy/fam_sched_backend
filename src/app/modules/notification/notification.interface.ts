@@ -10,6 +10,8 @@ export interface TNotification {
   description?: string;
   refference: ObjectId;
   model_type: modeType;
+  type?: string;
+  dedupeKey?: string;
   date?: Date;
   read: boolean;
   isDeleted: boolean;

@@ -19,5 +19,7 @@ const memberSchema = new Schema<IMember>(
   },
 );
 
+memberSchema.index({ user: 1, member: 1 }, { unique: true });
+
 const Member = model<IMember, IMemberModules>('Member', memberSchema);
 export default Member;
